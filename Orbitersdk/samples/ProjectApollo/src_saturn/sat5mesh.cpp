@@ -875,7 +875,8 @@ void SaturnV::SetThirdStageMesh (double offset)
 	mesh_dir=_V(0, 0, 23.25 + offset);
 
 	UINT meshidx;
-	meshidx = AddMesh (hCMnh, &mesh_dir);
+	if (!SkylabCM) meshidx = AddMesh(hCMnh, &mesh_dir);
+	else meshidx = AddMesh(hCMnhSL, &mesh_dir);
 	SetMeshVisibilityMode (meshidx, MESHVIS_VCEXTERNAL);
 
 	// And the Crew
@@ -900,8 +901,11 @@ void SaturnV::SetThirdStageMesh (double offset)
 	coascdridx = AddMesh(hcmCOAScdr, &mesh_dir);
 	SetCOASMesh();
 
-	sidehatchidx = AddMesh (hFHC, &mesh_dir);
-	sidehatchopenidx = AddMesh (hFHO, &mesh_dir);
+	if (!SkylabCM) sidehatchidx = AddMesh (hFHC, &mesh_dir);
+	else sidehatchidx = AddMesh(hFHCSL, &mesh_dir);
+
+	if (!SkylabCM) sidehatchopenidx = AddMesh (hFHO, &mesh_dir);
+	else sidehatchopenidx = AddMesh(hFHOSL, &mesh_dir);
 	SetSideHatchMesh();
 
 	//Forward Hatch

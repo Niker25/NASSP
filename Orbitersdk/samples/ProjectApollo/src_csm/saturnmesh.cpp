@@ -62,13 +62,16 @@ MESHHANDLE hSMCRYO;
 MESHHANDLE hSMSIMBAY;
 MESHHANDLE hCM;
 MESHHANDLE hCMnh;
+MESHHANDLE hCMnhSL;
 MESHHANDLE hCM2;
 MESHHANDLE hCMP;
 MESHHANDLE hCMInt;
 MESHHANDLE hCMVC;
 MESHHANDLE hCREW;
 MESHHANDLE hFHO;
+MESHHANDLE hFHOSL;
 MESHHANDLE hFHC;
+MESHHANDLE hFHCSL;
 MESHHANDLE hFHF;
 MESHHANDLE hCM2B;
 MESHHANDLE hdockring;
@@ -635,13 +638,16 @@ void SaturnInitMeshes()
 	LOAD_MESH(hSMSIMBAY, "ProjectApollo/SM-SIMBAY");
 	LOAD_MESH(hCM, "ProjectApollo/CM");
 	LOAD_MESH(hCMnh, "ProjectApollo/CM-Nohatch");
+	LOAD_MESH(hCMnhSL, "ProjectApollo/CM-Nohatch-SL");
 	LOAD_MESH(hCM2, "ProjectApollo/CM-Recov");
 	LOAD_MESH(hCMP, "ProjectApollo/CM-CMP");
 	LOAD_MESH(hCMInt, "ProjectApollo/CM-Interior");
 	LOAD_MESH(hCMVC, "ProjectApollo/CM-VC");
 	LOAD_MESH(hCREW, "ProjectApollo/CM-CREW");
 	LOAD_MESH(hFHC, "ProjectApollo/CM-HatchC");
+	LOAD_MESH(hFHCSL, "ProjectApollo/CM-HatchC-SL");
 	LOAD_MESH(hFHO, "ProjectApollo/CM-HatchO");
+	LOAD_MESH(hFHOSL, "ProjectApollo/CM-HatchO-SL");
 	LOAD_MESH(hFHF, "ProjectApollo/CM-HatchF");
 	LOAD_MESH(hCM2B, "ProjectApollo/CMB-Recov");
 	LOAD_MESH(hdockring, "ProjectApollo/CM-DockRing");
@@ -1032,7 +1038,8 @@ void Saturn::SetCSMStage (VECTOR3 cg_ofs)
 	mesh_dir=_V(0, 0, 34.4 - CGOffset);
 
 	UINT meshidx;
-	meshidx = AddMesh (hCMnh, &mesh_dir);
+	if (!SkylabCM) meshidx = AddMesh (hCMnh, &mesh_dir);
+	else meshidx = AddMesh(hCMnhSL, &mesh_dir);
 	SetMeshVisibilityMode (meshidx, MESHVIS_VCEXTERNAL);
 
 	if (LESAttached) {
@@ -1060,8 +1067,11 @@ void Saturn::SetCSMStage (VECTOR3 cg_ofs)
 	SetCMdocktgtMesh();
 
 	//Don't Forget the Hatch
-	sidehatchidx = AddMesh (hFHC, &mesh_dir);
-	sidehatchopenidx = AddMesh (hFHO, &mesh_dir);
+	if (!SkylabCM) sidehatchidx = AddMesh (hFHC, &mesh_dir);
+	else sidehatchidx = AddMesh(hFHCSL, &mesh_dir);
+
+	if (!SkylabCM) sidehatchopenidx = AddMesh (hFHO, &mesh_dir);
+	else sidehatchopenidx = AddMesh(hFHOSL, &mesh_dir);
 	SetSideHatchMesh();
 
 	//Forward Hatch
@@ -1535,7 +1545,8 @@ void Saturn::SetReentryMeshes() {
 		}
 	} else {
 		if (ApexCoverAttached) {
-			meshidx = AddMesh (hCMnh, &mesh_dir);
+			if (!SkylabCM) meshidx = AddMesh (hCMnh, &mesh_dir);
+			else meshidx = AddMesh(hCMnhSL, &mesh_dir);
 		} else {
 			mesh_dir=_V(0, 0, -1.2);
 			meshidx = AddMesh (hCM2, &mesh_dir);
@@ -1572,8 +1583,12 @@ void Saturn::SetReentryMeshes() {
 	SetCMdocktgtMesh();
 
 	// Hatch
-	sidehatchidx = AddMesh (hFHC, &mesh_dir);
-	sidehatchopenidx = AddMesh (hFHO, &mesh_dir);
+	if (!SkylabCM) sidehatchidx = AddMesh(hFHC, &mesh_dir);
+	else sidehatchidx = AddMesh(hFHCSL, &mesh_dir);
+
+	if (!SkylabCM) sidehatchopenidx = AddMesh (hFHO, &mesh_dir);
+	else sidehatchopenidx = AddMesh(hFHOSL, &mesh_dir);
+
 	sidehatchburnedidx = AddMesh (hFHC2, &mesh_dir);
 	sidehatchburnedopenidx = AddMesh (hFHO2, &mesh_dir);
 	SetSideHatchMesh();
@@ -1863,8 +1878,12 @@ void Saturn::SetRecovery()
 	SetMeshVisibilityMode (meshidx, MESHVIS_VCEXTERNAL);
 
 	// Hatch
-	sidehatchidx = AddMesh (hFHC, &mesh_dir);
-	sidehatchopenidx = AddMesh (hFHO, &mesh_dir);
+	if (!SkylabCM) sidehatchidx = AddMesh (hFHC, &mesh_dir);
+	else sidehatchidx = AddMesh(hFHCSL, &mesh_dir);
+
+	if (!SkylabCM) sidehatchopenidx = AddMesh (hFHO, &mesh_dir);
+	else sidehatchopenidx = AddMesh(hFHOSL, &mesh_dir);
+
 	sidehatchburnedidx = AddMesh (hFHC2, &mesh_dir);
 	sidehatchburnedopenidx = AddMesh (hFHO2, &mesh_dir);
 	SetSideHatchMesh();

@@ -452,7 +452,8 @@ void Saturn1b::SetSecondStageMeshes(double offset)
 		// otherwise the BPC is floating above the SM.
 		//
 		mesh_dir=_V(0,0,21.2 + offset);
-		meshidx = AddMesh (hCMnh, &mesh_dir);
+		if (!SkylabCM) meshidx = AddMesh (hCMnh, &mesh_dir);
+		else meshidx = AddMesh(hCMnhSL, &mesh_dir);
 		SetMeshVisibilityMode (meshidx, MESHVIS_VCEXTERNAL);
 
 		//
@@ -479,8 +480,11 @@ void Saturn1b::SetSecondStageMeshes(double offset)
 		//
 		// Don't Forget the Hatch
 		//
-		sidehatchidx = AddMesh (hFHC, &mesh_dir);
-		sidehatchopenidx = AddMesh (hFHO, &mesh_dir);
+		if (!SkylabCM) sidehatchidx = AddMesh (hFHC, &mesh_dir);
+		else sidehatchidx = AddMesh(hFHCSL, &mesh_dir);
+
+		if (!SkylabCM) sidehatchopenidx = AddMesh (hFHO, &mesh_dir);
+		else sidehatchopenidx = AddMesh(hFHOSL, &mesh_dir);
 		SetSideHatchMesh();
 
 		//Forward Hatch
