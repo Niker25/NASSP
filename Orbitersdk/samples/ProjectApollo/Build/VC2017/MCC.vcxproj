@@ -161,6 +161,7 @@
     <ClCompile Include="..\..\src_launch\MCC_Mission_G.cpp" />
     <ClCompile Include="..\..\src_launch\MCC_Mission_H1.cpp" />
     <ClCompile Include="..\..\src_launch\MCC_Mission_SL.cpp" />
+    <ClCompile Include="..\..\src_launch\MCC_Mission_ASTP.cpp" />
     <ClCompile Include="..\..\src_launch\rtcc.cpp" />
     <ClCompile Include="..\..\src_launch\RTCC_Mission_B.cpp" />
     <ClCompile Include="..\..\src_launch\RTCC_Mission_C.cpp" />
@@ -171,6 +172,7 @@
     <ClCompile Include="..\..\src_launch\RTCC_Mission_G.cpp" />
     <ClCompile Include="..\..\src_launch\RTCC_Mission_H1.cpp" />
     <ClCompile Include="..\..\src_launch\RTCC_Mission_SL.cpp" />
+    <ClCompile Include="..\..\src_launch\RTCC_Mission_ASTP.cpp" />
     <ClCompile Include="..\..\src_rtccmfd\AnalyticEphemerisGenerator.cpp" />
     <ClCompile Include="..\..\src_rtccmfd\ApolloGeneralizedOpticsProgram.cpp" />
     <ClCompile Include="..\..\src_rtccmfd\AscentRendezvousMonitor.cpp" />
@@ -214,6 +216,7 @@
     <ClInclude Include="..\..\src_launch\MCC_Mission_G.h" />
     <ClInclude Include="..\..\src_launch\MCC_Mission_H1.h" />
     <ClInclude Include="..\..\src_launch\MCC_Mission_SL.h" />
+    <ClInclude Include="..\..\src_launch\MCC_Mission_ASTP.h" />
     <ClInclude Include="..\..\src_launch\rtcc.h" />
     <ClInclude Include="..\..\src_rtccmfd\AnalyticEphemerisGenerator.h" />
     <ClInclude Include="..\..\src_rtccmfd\ApolloGeneralizedOpticsProgram.h" />

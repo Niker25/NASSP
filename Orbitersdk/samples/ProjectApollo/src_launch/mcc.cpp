@@ -43,6 +43,7 @@
 #include "MCC_Mission_G.h"
 #include "MCC_Mission_H1.h"
 #include "MCC_Mission_SL.h"
+#include "MCC_Mission_ASTP.h"
 #include "rtcc.h"
 #include "LVDC.h"
 #include "iu.h"
@@ -711,6 +712,10 @@ void MCC::TimeStep(double simdt){
 						MissionType = MTP_SKYLAB;
 						setState(MST_SL_PRELAUNCH);
 					}
+					else if (cm->pMission->GetMissionName() == "ASTP") {
+						MissionType = MTP_ASTP;
+						setState(MST_ASTP_PRELAUNCH);
+					}
 					else
 					{
 						// If the ApolloNo is not on this list, you are expected to provide a mission type in the scenario file, which will override the default.
@@ -832,6 +837,9 @@ void MCC::TimeStep(double simdt){
 					case MTP_SKYLAB:
 						setState(MST_SL_INSERTION);
 						break;
+					case MTP_ASTP:
+						setState(MST_ASTP_INSERTION);
+						break;
 					}
 				}
 			}
@@ -929,6 +937,12 @@ void MCC::TimeStep(double simdt){
 			* MISSION SL: SKYLAB   *
 			********************** */
 			MissionSequence_SL();
+			break;
+		case MTP_ASTP:
+			/* *********************
+			* MISSION ASTP: Apollo Soyuz Test Project *
+			********************** */
+			MissionSequence_ASTP();
 			break;
 		}
 	}
@@ -1430,7 +1444,7 @@ int MCC::subThread(){
 		subThreadMacro(subThreadType, subThreadMode);
 		Result = DONE;
 	}
-	else if (MissionType == MTP_C || MissionType == MTP_SKYLAB)
+	else if (MissionType == MTP_C || MissionType == MTP_SKYLAB || MissionType == MTP_ASTP)
 	{
 		OBJHANDLE ves = oapiGetVesselByName(LVName);
 		if (ves != NULL)

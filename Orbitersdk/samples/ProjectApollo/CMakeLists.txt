@@ -111,6 +111,7 @@ add_subdirectory(Project/sii)
 add_subdirectory(Project/SIVB)
 add_subdirectory(Project/Skylab)
 add_subdirectory(Project/sm)
+add_subdirectory(Project/Soyuz)
 add_subdirectory(Project/VAB)
 
 

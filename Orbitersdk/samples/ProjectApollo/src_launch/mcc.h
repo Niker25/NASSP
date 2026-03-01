@@ -301,6 +301,7 @@ public:
 	void MissionSequence_G();
 	void MissionSequence_H1();
 	void MissionSequence_SL();
+	void MissionSequence_ASTP();
 
 	RTCC *rtcc;												// Pointer to RTCC
 	MCC_Calculations mcc_calcs;

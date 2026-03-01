@@ -25,6 +25,7 @@ set(SOURCES
     ${NASSP_SOURCE_ROOT}/src_launch/MCC_Mission_G.cpp
     ${NASSP_SOURCE_ROOT}/src_launch/MCC_Mission_H1.cpp
     ${NASSP_SOURCE_ROOT}/src_launch/MCC_Mission_SL.cpp
+    ${NASSP_SOURCE_ROOT}/src_launch/MCC_Mission_ASTP.cpp
     ${NASSP_SOURCE_ROOT}/src_launch/rtcc.cpp
     ${NASSP_SOURCE_ROOT}/src_launch/RTCC_Mission_Calculations.cpp
     ${NASSP_SOURCE_ROOT}/src_launch/RTCC_Mission_B.cpp
@@ -35,6 +36,7 @@ set(SOURCES
     ${NASSP_SOURCE_ROOT}/src_launch/RTCC_Mission_G.cpp
     ${NASSP_SOURCE_ROOT}/src_launch/RTCC_Mission_H1.cpp
     ${NASSP_SOURCE_ROOT}/src_launch/RTCC_Mission_SL.cpp
+    ${NASSP_SOURCE_ROOT}/src_launch/RTCC_Mission_ASTP.cpp
     ${NASSP_SOURCE_ROOT}/src_rtccmfd/AnalyticEphemerisGenerator.cpp
     ${NASSP_SOURCE_ROOT}/src_rtccmfd/ApolloGeneralizedOpticsProgram.cpp
     ${NASSP_SOURCE_ROOT}/src_rtccmfd/AscentRendezvousMonitor.cpp
