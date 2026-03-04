@@ -36,10 +36,34 @@ void MCC::MissionSequence_ASTP()
 		UpdateMacro(UTP_NONE, PT_NONE, mcc_calcs.GETEval(3 * 3600.0), 10, MST_ASTP_ACM_PRELIM);
 		break;
 	case MST_ASTP_ACM_PRELIM: //ACM Prelim to ACM Final update
-		UpdateMacro(UTP_PADONLY, PT_AP7MNV, mcc_calcs.GETEval(3 * 3600.0 + 24 * 60), 11, MST_ASTP_ACM_FINAL);
+		UpdateMacro(UTP_PADWITHCMCUPLINK, PT_AP7MNV, mcc_calcs.GETEval(3 * 3600.0 + 24 * 60), 11, MST_ASTP_ACM_FINAL);
 		break;
 	case MST_ASTP_ACM_FINAL: //ACM Final to NC1 Preliminary update
-		UpdateMacro(UTP_PADWITHCMCUPLINK, PT_AP7MNV, mcc_calcs.GETEval(3 * 3600.0 + 24 * 60), 12, MST_ENTRY);
+		UpdateMacro(UTP_PADWITHCMCUPLINK, PT_AP7MNV, mcc_calcs.GETEval(4 * 3600.0 + 24 * 60), 12, MST_ASTP_NC1_PRELIM);
+		break;
+	case MST_ASTP_NC1_PRELIM: //NC1 Prelim to NC1 Final update
+		UpdateMacro(UTP_PADWITHCMCUPLINK, PT_SLMNV, mcc_calcs.GETEval(4 * 3600.0 + 45 * 60), 13, MST_ASTP_NC1_FINAL);
+		break;
+	case MST_ASTP_NC1_FINAL: //NC1 Final
+		UpdateMacro(UTP_PADWITHCMCUPLINK, PT_SLMNV, mcc_calcs.GETEval(5 * 3600.0 + 48 * 60), 14, MST_ASTP_CSM_WT);
+		break;
+	case MST_ASTP_CSM_WT: //CSM Alone weight update
+		UpdateMacro(UTP_PADONLY, PT_AP10DAPDATA, mcc_calcs.GETEval(6 * 3600.0 + 18 * 60), 15, MST_ASTP_RNDZ_REFSMMAT);
+		break;
+	case MST_ASTP_RNDZ_REFSMMAT: //Rendezvous REFSMMAT
+		UpdateMacro(UTP_CMCUPLINKONLY, PT_NONE, mcc_calcs.GETEval(7 * 3600.0 + 45 * 60), 16, MST_ASTP_LIFTOFF_UPDATE);
+		break;
+	case MST_ASTP_LIFTOFF_UPDATE: //Liftoff Time update -7h 30min & ATS S.V.
+		UpdateMacro(UTP_CMCUPLINKONLY, PT_NONE, mcc_calcs.GETEval(29 * 3600.0 + 45 * 60), 17, MST_ASTP_BLOCK_33_48);
+		break;
+	case MST_ASTP_BLOCK_33_48: //Block Data revs 33 & 48
+		UpdateMacro(UTP_PADONLY, PT_AP7BLK, mcc_calcs.GETEval(29 * 3600.0 + 50 * 60), 18, MST_ASTP_PCM_PRELIM);
+		break;
+	case MST_ASTP_PCM_PRELIM: //Phase Correction Maneuver prelim
+		UpdateMacro(UTP_PADWITHCMCUPLINK, PT_SLMNV, mcc_calcs.GETEval(31 * 3600.0 + 25 * 60), 19, MST_ASTP_PCM_FINAL);
+		break;
+	case MST_ASTP_PCM_FINAL: //Phase Correction Maneuver prelim
+		UpdateMacro(UTP_PADWITHCMCUPLINK, PT_SLMNV, mcc_calcs.GETEval(46 * 3600.0 + 35 * 60), 20, MST_ASTP_NC2_PRELIM);
 		break;
 	}
 }

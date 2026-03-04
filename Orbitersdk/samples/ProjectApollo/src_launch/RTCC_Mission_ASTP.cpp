@@ -149,7 +149,7 @@ bool RTCC::CalculationMTP_ASTP(int fcn, LPVOID& pad, char* upString, char* upDes
 		in.UT = false; //2 jets
 		in.IgnitionTimeOption = false;
 		in.IterationFlag = false;
-		in.LMWeight = 0.0;
+		in.LMWeight = 1740.888;
 		in.Thruster = RTCC_ENGINETYPE_CSMSPS;
 		in.VC = RTCC_MANVEHICLE_CSM;
 		in.VehicleArea = PZMPTCSM.ConfigurationArea;
@@ -174,7 +174,7 @@ bool RTCC::CalculationMTP_ASTP(int fcn, LPVOID& pad, char* upString, char* upDes
 		AP7ManeuverPAD(manopt, *form);
 		sprintf(form->purpose, "ACM");
 
-		if (!preliminary)
+		if (preliminary)
 		{
 
 			AGCStateVectorUpdate(buffer1, 1, RTCC_MPT_CSM, svCSM);
@@ -187,8 +187,281 @@ bool RTCC::CalculationMTP_ASTP(int fcn, LPVOID& pad, char* upString, char* upDes
 				sprintf(upDesc, "CSM & Soyuz state vectors");
 			}
 		}
+		else
+		{
+			CMCExternalDeltaVUpdate(buffer1, P30TIG, dV_LVLH);
+			sprintf(uplinkdata, "%s", buffer1);
+			if (upString != NULL) {
+				// give to mcc
+				strncpy(upString, uplinkdata, 1024 * 3);
+				sprintf(upDesc, "ACM Target load");
+			}
+		}
 	}
 	break;
+	case 13: //NC1 preliminary update
+	case 14: //NC1 final update
+	{
+		SLMNV* form = (SLMNV*)pad;
+		AP7ManPADOpt manopt;
+		VECTOR3 dV_LVLH_LEM, dV_imp;
+		double LEMCircTIG, TIG_imp, GET_TH;
+		PMMMPTInput in;
+		GMPOpt gmpopt;
+		EphemerisData svCSM, svLEM, sv_bco, sv_aco, sv_nc1, sv_nh, sv_ncc, sv_nsr, sv_tpi;
+		SV sv_circ, sv_soyuz;
+		PLAWDTOutput WeightsTableLEM, WeightsTable2LEM, WeightsTableCSM, WeightsTable2CSM;
+		DKIOpt dki;
+
+		char buffer1[1000];
+		char buffer2[1000];
+
+		if (fcn == 13)
+		{
+			preliminary = true;
+		}
+		else
+		{
+			preliminary = false;
+		}
+
+		if (PZMPTCSM.ManeuverNum > 0 || PZMPTLEM.ManeuverNum > 0)
+		{
+			//Delete maneuvers from MPT
+			GMGMED("M62,CSM,1,D;");
+			GMGMED("M62,LEM,1,D;");
+		}
+
+		//GPM Caclulation
+		svLEM = StateVectorCalcEphem(calcParams.tgt);
+		GET_TH = OrbMech::HHMMSSToSS(16, 0, 0);
+
+		gmpopt.ManeuverCode = RTCC_GMP_CRA;
+		gmpopt.sv_in.sv = svLEM;
+		gmpopt.TIG_GET = GET_TH;
+
+		GeneralManeuverProcessor(&gmpopt, dV_imp, TIG_imp);
+
+		//PFP
+		in.CONFIG = 12; //LM
+		in.CSMWeight = 0.0;
+		in.DETU = 0;
+		in.DPSScaleFactor = 1;
+		in.DT_10PCT = -1.0;
+		in.HeadsUpIndicator = false;
+		in.IgnitionTimeOption = false;
+		in.IterationFlag = false; //Could be true
+		in.LMWeight = calcParams.tgt->GetMass();
+		in.sv_before = PZGPMELM.SV_before;
+		in.Thruster = RTCC_ENGINETYPE_LMDPS;
+		in.UT = false; //2 Jets
+		in.VC = RTCC_MANVEHICLE_LM;
+		in.VehicleArea = PZMPTLEM.ConfigurationArea;
+		in.VehicleWeight = calcParams.tgt->GetMass();
+		in.V_aft = PZGPMELM.V_after;
+
+		double GMT_TIG;
+		PoweredFlightProcessor(in, GMT_TIG, dV_LVLH_LEM);
+		LEMCircTIG = GETfromGMT(GMT_TIG);
+
+		sv_soyuz = StateVectorCalc(calcParams.tgt);
+		sv_circ = ExecuteManeuver(sv_soyuz, LEMCircTIG, dV_LVLH_LEM, calcParams.tgt->GetMass(), RTCC_ENGINETYPE_LMDPS);
+
+		////CSM Config and mass update
+		//med_m55.Table = RTCC_MPT_CSM;
+		//MPTMassUpdate(calcParams.src, med_m50, med_m55, med_m49);
+		//PMMWTC(55);
+		//med_m50.Table = RTCC_MPT_CSM;
+		//med_m50.WeightGET = GETfromGMT(RTCCPresentTimeGMT());
+		//PMMWTC(50);
+
+		////CSM Trajectory Update
+		//StateVectorTableEntry sv0;
+		//sv0.Vector = StateVectorCalcEphem(calcParams.src);
+		//sv0.LandingSiteIndicator = false;
+		//sv0.VectorCode = "APIC001";
+
+		//PMSVCT(4, RTCC_MPT_CSM, sv0);
+
+		////LEM Config and mass update
+		//med_m55.Table = RTCC_MPT_LM;
+		//MPTMassUpdate(calcParams.tgt, med_m50, med_m55, med_m49);
+		//PMMWTC(55);
+		//med_m50.Table = RTCC_MPT_LM;
+		//med_m50.WeightGET = GETfromGMT(RTCCPresentTimeGMT());
+		//PMMWTC(50);
+
+		////LEM Trajectory Initialization
+		//StateVectorTableEntry sv1;
+		//sv1.Vector = StateVectorCalcEphem(calcParams.tgt);
+		//sv1.LandingSiteIndicator = false;
+		//sv1.VectorCode = "APIL001";
+
+		//PMSVCT(4, RTCC_MPT_LM, sv1);
+
+		////Add Soyuz Circ maneuver to MPT
+		//char buf[256];
+		//sprintf(buf, "M40,P4,%f,%f,%f;",
+		//	dV_LVLH_LEM.x * 3.281,
+		//	dV_LVLH_LEM.y * 3.281,
+		//	dV_LVLH_LEM.z * 3.281);
+		//GMGMED(buf);
+
+		//med_m66.Table = RTCC_MPT_LM;
+		//med_m66.ReplaceCode = 0; //Don't replace
+		//med_m66.DPSThrustFactor = 1;
+		//med_m66.TenPercentDT = -1;
+		//med_m66.GETBI = LEMCircTIG;
+		//med_m66.Thruster = RTCC_ENGINETYPE_LMDPS;
+		//med_m66.BurnParamNo = 4;
+		//med_m66.ConfigChangeInd = RTCC_CONFIGCHANGE_NONE;
+
+		////Dummy data
+		//std::vector<std::string> str;
+		//PMMMED("66", str);
+
+
+		//GMGMED("U02,LEM,GET,17:00:00,,ECI"); //Checkout Soyuz cutoff vector
+
+		////Get Soyuz vector from checkout monitor
+		//double x = EZCHECKDIS.Pos.x;
+		//double y = EZCHECKDIS.Pos.y;
+		//double z = EZCHECKDIS.Pos.z;
+
+		//double xDOT = EZCHECKDIS.Vel.x;
+		//double yDOT = EZCHECKDIS.Vel.y;
+		//double zDOT = EZCHECKDIS.Vel.z;
+
+		//double GET = EZCHECKDIS.GET;
+
+		//double ss;
+		//int hh, mm;
+		//OrbMech::SStoHHMMSS(GET, hh, mm, ss, 0.01);
+
+		//sprintf(buf,
+		//	"P14,LEM,%.9f,%.9f,%.9f,%.9f,%.9f,%.9f,%02d:%02d:%05.2f,L,ECI;",
+		//	x, y, z,
+		//	xDOT, yDOT, zDOT,
+		//	hh, mm, ss);
+		//GMGMED(buf);
+
+		//NC1 Calculation
+		double NC1_THR = 5*3600 + 41*60 + 28;
+		svCSM = StateVectorCalcEphem(calcParams.src);
+		dki.sv_CSM = svCSM;
+		dki.sv_LM = ConvertSVtoEphemData(sv_circ);
+		dki.MV = 1; //CSM maneuvers
+
+		dki.I4 = true;
+		dki.IPUTNA = 1; //Maneuver line at chaser apogee
+		dki.PUTTNA = GMTfromGET(NC1_THR); //THR Time at PET 05:00:00
+		dki.PUTNA = 1.0;
+		dki.K46 = 4; //TPI at X minutes into day
+		dki.TIMLIT = -19.0;
+		dki.DHNCC = 20.0 * 1852.0;
+		dki.DHSR = 10.0 * 1852.0;
+		dki.Elev = 27.0 * RAD;
+		dki.dt_NCC_NSR = 37.0 * 60.0;
+		dki.NC1 = 1.0;
+		dki.NH = 25;
+		dki.NCC = 25.5;
+		dki.MI = 27.0;
+		dki.WT = 130.0 * RAD;
+		dki.NPC = -1.0;
+
+		DockingInitiationProcessor(dki);
+
+		calcParams.Phasing = PZREDT.GET[0]; //NC1 time
+		calcParams.Insertion = PZREDT.GET[1]; //NC2 time
+		calcParams.CSI = PZREDT.GET[2]; //NCC time
+		calcParams.CDH = PZREDT.GET[3]; //NSR time
+		calcParams.TPI = PZRPDT.data[0].GETTPI; //TPI time
+
+		mcc->mcc_calcs.StoreStateVector(PZDKIELM.Block[0].SV_before[4]); //Save TPI vector for RNVZ REFSMMAT
+
+		manopt.TIG = calcParams.Phasing;
+		manopt.dV_LVLH = PZREDT.DVVector[0] * 0.3048;
+		manopt.enginetype = RTCC_ENGINETYPE_CSMSPS;
+		manopt.HeadsUp = false;
+		manopt.REFSMMAT = GetREFSMMATfromAGC(&mcc->cm->agc.vagc, true);
+		manopt.navcheckGET = 0.0;
+		manopt.sxtstardtime = 0.0;
+		manopt.UllageDT = 20.0;
+		manopt.UllageThrusterOpt = false;
+		manopt.sv0 = dki.sv_CSM;
+		manopt.WeightsTable = GetWeightsTable(calcParams.src, true, true);
+
+		SLManeuverPAD(manopt, *form);
+
+		form->type = 1;
+		form->prelim = preliminary;
+
+		if (preliminary)
+		{
+			char buffer1[1000];
+
+			AGCStateVectorUpdate(buffer1, 1, RTCC_MPT_CSM, dki.sv_CSM);
+
+			sprintf(uplinkdata, "%s", buffer1);
+			if (upString != NULL) {
+				// give to mcc
+				strncpy(upString, uplinkdata, 1024 * 3);
+				sprintf(upDesc, "CSM State Vector");
+			}
+		}
+		else
+		{
+			CMCExternalDeltaVUpdate(buffer1, calcParams.Phasing, PZREDT.DVVector[0] * 0.3048);
+			sprintf(uplinkdata, "%s", buffer1);
+			if (upString != NULL) {
+				// give to mcc
+				strncpy(upString, uplinkdata, 1024 * 3);
+				sprintf(upDesc, "NC1 Target load");
+			}
+		}
+
+			////Execute all RNVZ maneuvers until TPI
+			//WeightsTableCSM = GetWeightsTable(calcParams.src, true, true);
+			//ExecuteManeuver(dki.sv_CSM, WeightsTableCSM, calcParams.Phasing, PZREDT.DVVector[0] * 0.3048, RTCC_ENGINETYPE_CSMSPS, sv_nc1, WeightsTable2CSM);
+			//ExecuteManeuver(sv_nc1, WeightsTable2CSM, calcParams.Insertion, PZREDT.DVVector[1] * 0.3048, RTCC_ENGINETYPE_CSMSPS, sv_nh, WeightsTable2CSM);
+			//ExecuteManeuver(sv_nh, WeightsTable2CSM, calcParams.CSI, PZREDT.DVVector[3] * 0.3048, RTCC_ENGINETYPE_CSMSPS, sv_ncc, WeightsTable2CSM);
+			//ExecuteManeuver(sv_ncc, WeightsTable2CSM, calcParams.CDH, PZREDT.DVVector[4] * 0.3048, RTCC_ENGINETYPE_CSMSPS, sv_nsr, WeightsTable2CSM);
+			//ExecuteManeuver(sv_nsr, WeightsTable2CSM, calcParams.TPI, PZREDT.DVVector[5] * 0.3048, RTCC_ENGINETYPE_CSMSPS, sv_tpi, WeightsTable2CSM); //We obtain the CSM sv after TPI burn
+	}
+	break;
+	case 15:
+	{
+		AP10DAPDATA* form = (AP10DAPDATA*)pad;
+
+		CSMDAPUpdate(calcParams.src, *form, false, false);
+	}
+	break;
+	case 16:
+	{
+		//Calculate RNVZ REFSMMAT
+		REFSMMATOpt refs;
+		MATRIX3 REFSMMAT, A;
+		char buffer1[1000];
+
+		refs.REFSMMATopt = 2;
+		refs.REFSMMATTime = calcParams.TPI;
+		refs.vessel = calcParams.src;
+		refs.vesseltype = 1;
+		refs.useSV = true;
+		mcc->mcc_calcs.RestoreStateVector(refs.RV_MCC);
+
+		REFSMMAT = REFSMMATCalc(&refs);
+		EMGSTSTM(RTCC_MPT_CSM, REFSMMAT, RTCC_REFSMMAT_TYPE_CUR, refs.REFSMMATTime);
+
+		AGCDesiredREFSMMATUpdate(buffer1, EZJGMTX1.data[0].REFSMMAT);
+
+		sprintf(uplinkdata, "%s", buffer1);
+		if (upString != NULL) {
+			// give to mcc
+			strncpy(upString, uplinkdata, 1024 * 3);
+			sprintf(upDesc, "Rendezvous REFSMMAT");
+		}
+	}
 	}
 	return scrubbed;
 }

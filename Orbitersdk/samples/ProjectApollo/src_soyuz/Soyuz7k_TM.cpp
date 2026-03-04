@@ -15,13 +15,23 @@ class Soyuz7k_TM : public VESSEL4 {
 public:
 	Soyuz7k_TM(OBJHANDLE hVessel, int flightmodel);
 	~Soyuz7k_TM();
-	SURFHANDLE atrcs;
+	void clbkPostCreation();
 	void clbkSetClassCaps(FILEHANDLE cfg);
+	void clbkPreStep(double simt, double simdt, double mjd);
+	void clbkSaveState(FILEHANDLE scn);
+	void clbkLoadStateEx(FILEHANDLE scn, void* status);
+	int clbkConsumeBufferedKey(DWORD key, bool down, char* kstate);
+	void clbkFocusChanged(bool getfocus, OBJHANDLE hNewVessel, OBJHANDLE hOldVessel);
+	void clbkGetRadiationForce(const VECTOR3& mflux, VECTOR3& F, VECTOR3& pos);
 
 private:
 	ATTACHMENTHANDLE hAttach;
 	DOCKHANDLE hDock;
 	MESHHANDLE hT_AF_PAO, hTM_BO, hOK_SA, hok_vc, hOK_cabling;
+	BEACONLIGHTSPEC blinklights[2], attlights[4];
+	VECTOR3 blinklights_pos[2], attlights_pos[4];
+	bool blinklightsActive, attlightsActive;
+	double visibilitySize;
 	PROPELLANT_HANDLE hpPAO;
 	PROPELLANT_HANDLE hpSA;
 };
@@ -36,8 +46,24 @@ Soyuz7k_TM::~Soyuz7k_TM()
 {
 }
 
+void Soyuz7k_TM::clbkPostCreation()
+{
+	visibilitySize = 31.1; //Tuned so Soyuz disappears in the CSM optics at 400nm range
+
+	if (oapiGetFocusObject() == GetHandle()) { SetSize(10); }
+	else { SetSize(visibilitySize); }
+}
+
+void Soyuz7k_TM::clbkPreStep(double simt, double simdt, double mjd)
+{
+	//sprintf(oapiDebugString(), "size %0.1f", GetSize());
+}
+
 void Soyuz7k_TM::clbkSetClassCaps(FILEHANDLE cfg)
 {
+	blinklightsActive = false;
+	attlightsActive = false;
+
 	//General Settings
 	SetEmptyMass(7055.0);
 	SetSize(10);
@@ -69,7 +95,7 @@ void Soyuz7k_TM::clbkSetClassCaps(FILEHANDLE cfg)
 	hpSA = CreatePropellantResource(40, 40);
 
 	//Exhaust textures
-	atrcs = oapiRegisterExhaustTexture("dragon1/atrcs");
+	SURFHANDLE atrcs = oapiRegisterExhaustTexture("dragon1/Dragon_atrcs");
 
 	//Thrusters definition
 	THRUSTER_HANDLE th_main = CreateThruster(_V(0, 0, -3.35), _V(0, 0, 1), 4090.0, hpPAO, 2763.6);
@@ -141,32 +167,141 @@ void Soyuz7k_TM::clbkSetClassCaps(FILEHANDLE cfg)
 	for (int i = 0; i < 4; i++) {
 		AddExhaust(th_fwd[i], 5.00, 0.25, atrcs);
 	}
-	AddExhaust(th_back[0], 5.00, 0.25, atrcs);
-	AddExhaust(th_back[1], 5.00, 0.25, atrcs);
+	AddExhaust(th_back[0], 5.00, 0.25, _V(-1.15, 0, -0.85), _V(-0.41, 0, 0.912), atrcs);
+	AddExhaust(th_back[1], 5.00, 0.25, _V(1.15, 0, -0.85), _V(0.41, 0, 0.912), atrcs);
 
-	AddExhaust(th_translate_left, 5.00, 0.25, atrcs);
-	AddExhaust(th_translate_right, 5.00, 0.25, atrcs);
+	AddExhaust(th_translate_left, 5.00, 0.25, _V(0.875, 0.82, -1.11), _V(0.762, 0.648, 0), atrcs);
+	AddExhaust(th_translate_left, 5.00, 0.25, _V(0.875, -0.82, -1.11), _V(0.762, -0.648, 0), atrcs);
 
-	AddExhaust(th_translate_up, 5.00, 0.25, atrcs);
-	AddExhaust(th_translate_down, 5.00, 0.25, atrcs);
+	AddExhaust(th_translate_right, 5.00, 0.25, _V(-0.875, 0.82, -1.11), _V(-0.762, 0.648, 0), atrcs);
+	AddExhaust(th_translate_right, 5.00, 0.25, _V(-0.875, -0.82, -1.11), _V(-0.762,- 0.648, 0), atrcs);
 
-	AddExhaust(th_pitch_up[0], 5.00, 0.25, atrcs);
-	AddExhaust(th_pitch_up[1], 5.00, 0.25, atrcs);
+	AddExhaust(th_translate_up, 5.00, 0.25, _V(0.0, -1.2, -1.15), _V(0, -1, 0), atrcs);
+	AddExhaust(th_translate_down, 5.00, 0.25, _V(0.0, 1.2, -1.15), _V(0, 1, 0), atrcs);
 
-	AddExhaust(th_pitch_dn[0], 5.00, 0.25, atrcs);
-	AddExhaust(th_pitch_dn[1], 5.00, 0.25, atrcs);
+	AddExhaust(th_pitch_up[0], 5.00, 0.25, _V(0, 1.12, -2.93), _V(0, 1, 0), atrcs);
+	AddExhaust(th_pitch_dn[0], 5.00, 0.25, _V(0, -1.12, -2.93), _V(0, -1, 0), atrcs);
 
-	AddExhaust(th_yaw_l[0], 5.00, 0.25, atrcs);
-	AddExhaust(th_yaw_l[1], 5.00, 0.25, atrcs);
+	AddExhaust(th_yaw_l[0], 5.00, 0.25, _V(-1.15, 0, -0.85), _V(-0.41, 0, 0.912), atrcs);
+	AddExhaust(th_yaw_r[0], 5.00, 0.25, _V(1.15, 0, -0.85), _V(0.41, 0, 0.912), atrcs);
 
-	AddExhaust(th_yaw_r[0], 5.00, 0.25, atrcs);
-	AddExhaust(th_yaw_r[1], 5.00, 0.25, atrcs);
+	AddExhaust(th_bank_l[0], 5.00, 0.25, _V(0.875, 0.82, -1.11), _V(0.762, 0.648, 0), atrcs);
+	AddExhaust(th_bank_l[1], 5.00, 0.25, _V(-0.875, -0.82, -1.11), _V(-0.762, -0.648, 0), atrcs);
 
-	AddExhaust(th_bank_l[0], 5.00, 0.25, atrcs);
-	AddExhaust(th_bank_l[1], 5.00, 0.25, atrcs);
+	AddExhaust(th_bank_r[0], 5.00, 0.25, _V(0.875, -0.82, -1.11), _V(0.762, -0.648, 0), atrcs);
+	AddExhaust(th_bank_r[1], 5.00, 0.25, _V(-0.875, 0.82, -1.11), _V(-0.762, 0.648, 0), atrcs);
 
-	AddExhaust(th_bank_r[0], 5.00, 0.25, atrcs);
-	AddExhaust(th_bank_r[1], 5.00, 0.25, atrcs);
+	//Beacons def
+	blinklights_pos[0] = _V(0, 1.20061, -1.72033);
+	blinklights_pos[1] = _V(0, -1.12247, -1.80755);
+
+	attlights_pos[0] = _V(-5.04453, -0.01211, -1.22717);
+	attlights_pos[1] = _V(-5.00324, -0.011685, -3.06356);
+
+	attlights_pos[2] = _V(5.04453, -0.01211, -1.22717);
+	attlights_pos[3] = _V(5.00324, -0.011685, -3.06356);
+
+	static VECTOR3 whiteCol = _V(1, 1, 1);
+	static VECTOR3 attCol[3] = {
+		{ 0.5, 1.0, 0.5 }, //Green
+		{ 1.0, 0.5, 0.5 }, //Red
+		{ 1, 1, 1 }, //White
+
+	};
+
+	for (int i = 0; i < 2; i++) {
+		blinklights[i].shape = BEACONSHAPE_STAR; 
+		blinklights[i].pos = &blinklights_pos[i];
+		blinklights[i].col = &whiteCol;
+		blinklights[i].size = 0.25;
+		blinklights[i].falloff = 0.5;
+		blinklights[i].period = 1.0;
+		blinklights[i].duration = 0.1;
+		blinklights[i].tofs = 0;
+		blinklights[i].active = false;
+
+		AddBeacon(blinklights + i);
+	}
+
+	for (int i = 0; i < 4; i++) {
+		attlights[i].shape = BEACONSHAPE_STAR;
+		attlights[i].pos = &attlights_pos[i];
+		attlights[i].col = (i == 0) ? attCol : (i == 2) ? attCol + 1 : attCol + 2;
+		attlights[i].size = 0.1;
+		attlights[i].falloff = 0.5;
+		attlights[i].period = 0;
+		attlights[i].duration = 1.0;
+		attlights[i].tofs = 0;
+		attlights[i].active = false;
+
+		AddBeacon(attlights + i);
+	}
+}
+
+int Soyuz7k_TM::clbkConsumeBufferedKey(DWORD key, bool down, char* kstate)
+{
+	if (!down) return 0; // only process keydown events
+
+	if (KEYMOD_SHIFT(kstate))
+	{
+		switch (key)
+		{
+		}
+	}
+	else if (KEYMOD_ALT(kstate))
+	{
+		switch (key)
+		{
+		case OAPI_KEY_L:
+			if (attlightsActive == false)
+			{
+				for (int i = 0; i < 4; i++)
+				{
+					attlights[i].active = true;
+					attlightsActive = true;
+				}
+			}
+			else if (attlightsActive == true)
+			{
+				for (int i = 0; i < 4; i++)
+				{
+					attlights[i].active = false;
+					attlightsActive = false;
+				}
+			}
+			return 1;
+		}
+	}
+	else if (KEYMOD_CONTROL(kstate))
+	{
+		switch (key)
+		{
+		case OAPI_KEY_L:
+			if (blinklightsActive == false)
+			{
+				for (int i = 0; i < 2; i++)
+				{
+					blinklights[i].active = true;
+					blinklightsActive = true;
+				}
+			}
+			else if (blinklightsActive == true)
+			{
+				for (int i = 0; i < 2; i++)
+				{
+					blinklights[i].active = false;
+					blinklightsActive = false;
+				}
+			}
+			return 1;
+		}
+	}
+	else { // unmodified keys
+		switch (key)
+		{
+		}
+	}
+	return 0;
 }
 
 // ==============================================================
@@ -199,4 +334,86 @@ DLLCLBK void ovcExit(VESSEL* vessel)
 {
 	if (vessel) delete (Soyuz7k_TM*)vessel;
 
+}
+
+void Soyuz7k_TM::clbkSaveState(FILEHANDLE scn)
+{
+	char cbuf[256];
+	VESSEL4::clbkSaveState(scn);
+	sprintf(cbuf, "%d", blinklightsActive);
+	oapiWriteScenario_string(scn, "BLINK", cbuf);
+
+	sprintf(cbuf, "%d", attlightsActive);
+	oapiWriteScenario_string(scn, "ATT", cbuf);
+}
+
+void Soyuz7k_TM::clbkLoadStateEx(FILEHANDLE scn, void* vs)
+{
+	char* line;
+	while (oapiReadScenario_nextline(scn, line)) 
+	{
+		if (!_strnicmp(line, "BLINK", 5))
+		{
+			sscanf(line + 5, "%d", &blinklightsActive);
+		}
+		else if (!_strnicmp(line, "ATT", 3))
+		{
+			sscanf(line + 3, "%d", &attlightsActive);
+		}
+		else
+		{
+			ParseScenarioLineEx(line, vs);
+		}
+	}
+
+	if (oapiGetFocusObject() == GetHandle()) { SetSize(10); }
+	else { SetSize(visibilitySize); }
+
+	if (blinklightsActive == true)
+	{
+		for (int i = 0; i < 2; i++)
+		{
+			blinklights[i].active = true;
+		}
+	}
+
+	if (attlightsActive == true)
+	{
+		for (int i = 0; i < 4; i++)
+		{
+			attlights[i].active = true;
+		}
+	}
+}
+
+void Soyuz7k_TM::clbkFocusChanged(bool getfocus, OBJHANDLE hNewVessel, OBJHANDLE hOldVessel)
+{
+	OBJHANDLE hSoyuz = GetHandle();
+	if (hNewVessel == hSoyuz) { //Soyuz gains focus
+
+		bool fixCamera = false;
+		if (oapiCameraInternal() == false) {
+			fixCamera = true;
+			oapiCameraAttach(hSoyuz, 0);
+		}
+
+		SetSize(10);
+
+		if (fixCamera == true) {
+			oapiCameraAttach(hSoyuz, 1);
+		}
+	}
+	else if (hOldVessel == hSoyuz) { //Soyuz loses focus
+		SetSize(visibilitySize);
+	}
+}
+
+void Soyuz7k_TM::clbkGetRadiationForce(const VECTOR3& mflux, VECTOR3& F, VECTOR3& pos)
+{
+	double size = 10;
+	double cs = size * size;  // simplified cross section
+	double albedo = 1.5;    // simplistic albedo (mixture of absorption, reflection)
+
+	F = mflux * (cs * albedo);
+	pos = _V(0, 0, 0);        // don't induce torque
 }

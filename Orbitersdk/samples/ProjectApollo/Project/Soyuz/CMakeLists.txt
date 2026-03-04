@@ -1,6 +1,8 @@
 project(Soyuz)
 
 set(INCLUDE_DIRS
+    ${NASSP_SOURCE_ROOT}/src_sys
+    ${NASSP_SOURCE_ROOT}/src_sys/PanelSDK
     ${ORBITERSDK_DIR}/include
     ${ORBITERSDK_DIR}/XRSound
 )
