@@ -54,13 +54,16 @@ void MCC::MissionSequence_ASTP()
 		UpdateMacro(UTP_CMCUPLINKONLY, PT_NONE, mcc_calcs.GETEval(7 * 3600.0 + 45 * 60), 16, MST_ASTP_LIFTOFF_UPDATE);
 		break;
 	case MST_ASTP_LIFTOFF_UPDATE: //Liftoff Time update -7h 30min & ATS S.V.
-		UpdateMacro(UTP_CMCUPLINKONLY, PT_NONE, mcc_calcs.GETEval(25 * 3600.0 + 41 * 60), 17, MST_ASTP_CSM_ATS_SV);
+		UpdateMacro(UTP_CMCUPLINKONLY, PT_NONE, mcc_calcs.GETEval(24 * 3600.0), 17, MST_ASTP_SOYUZ_CIRC);
+		break;
+	case MST_ASTP_SOYUZ_CIRC: //Soyuz Maneuver Prograde and burn calc
+		UpdateMacro(UTP_NONE, PT_NONE, mcc_calcs.GETEval(25 * 3600.0 + 40 * 60), 18, MST_ASTP_CSM_ATS_SV);
 		break;
 	case MST_ASTP_CSM_ATS_SV: //CSM & ATS SV Update
-		UpdateMacro(UTP_CMCUPLINKONLY, PT_NONE, mcc_calcs.GETEval(29 * 3600.0 + 45 * 60), 18, MST_ASTP_BLOCK_33_48);
+		UpdateMacro(UTP_CMCUPLINKONLY, PT_NONE, mcc_calcs.GETEval(29 * 3600.0 + 45 * 60), 19, MST_ASTP_BLOCK_33_48);
 		break;
 	case MST_ASTP_BLOCK_33_48: //Block Data revs 33 & 48
-		UpdateMacro(UTP_PADONLY, PT_AP7BLK, mcc_calcs.GETEval(29 * 3600.0 + 50 * 60), 19, MST_ASTP_PCM_PRELIM);
+		UpdateMacro(UTP_PADONLY, PT_AP7BLK, mcc_calcs.GETEval(29 * 3600.0 + 50 * 60), 20, MST_ASTP_PCM_PRELIM);
 		break;
 	}
 }

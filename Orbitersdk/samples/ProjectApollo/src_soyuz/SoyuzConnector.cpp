@@ -1,7 +1,8 @@
-/****************************************************************************
+/***************************************************************************
 This file is part of Project Apollo - NASSP
+Copyright 2023
 
-MCC for Skylab Missions (Header)
+Skylab Connector Classes
 
 Project Apollo is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -21,22 +22,38 @@ See http://nassp.sourceforge.net/license/ for more details.
 
 **************************************************************************/
 
-#pragma once
+#include "Orbitersdk.h"
+#include "Soyuz7k_TM.h"
+#include "SoyuzConnector.h"
 
-//MISSION STATES: ASTP
 
-#define MST_ASTP_PRELAUNCH 10
-#define MST_ASTP_INSERTION 20
-#define MST_ASTP_ACM_PRELIM 21
-#define MST_ASTP_ACM_FINAL 22
-#define MST_ASTP_NC1_PRELIM 23
-#define MST_ASTP_NC1_FINAL 24
-#define MST_ASTP_CSM_WT 25
-#define MST_ASTP_RNDZ_REFSMMAT 26
-#define MST_ASTP_LIFTOFF_UPDATE 27
-#define MST_ASTP_SOYUZ_CIRC 28
-#define MST_ASTP_CSM_ATS_SV 29
-#define MST_ASTP_BLOCK_33_48 30
-#define MST_ASTP_PCM_PRELIM 31
-#define MST_ASTP_PCM_FINAL 32
-#define MST_ASTP_NC2_PRELIM 33
+Soyuz_VHFtoCSM_VHF_Connector::Soyuz_VHFtoCSM_VHF_Connector()
+{
+	type = VHF_RNG;
+}
+
+Soyuz_VHFtoCSM_VHF_Connector::~Soyuz_VHFtoCSM_VHF_Connector()
+{
+
+}
+
+void Soyuz_VHFtoCSM_VHF_Connector::SendRF(double freq, double XMITpow, double XMITgain, double XMITphase, bool RangeTone)
+{
+	ConnectorMessage cm;
+
+	cm.destination = VHF_RNG;
+	cm.messageType = VHF_RNG_SIGNAL_LM;
+
+	cm.val1.dValue = freq; //MHz
+	cm.val2.dValue = XMITpow; //W
+	cm.val3.dValue = XMITgain; //dBi
+	cm.val4.dValue = XMITphase;
+	cm.val1.bValue = RangeTone;
+
+	SendMessage(cm);
+}
+
+bool Soyuz_VHFtoCSM_VHF_Connector::ReceiveMessage(Connector* from, ConnectorMessage& m)
+{
+	return true;
+}

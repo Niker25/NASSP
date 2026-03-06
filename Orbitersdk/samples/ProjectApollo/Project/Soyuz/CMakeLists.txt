@@ -1,13 +1,23 @@
 project(Soyuz)
 
 set(INCLUDE_DIRS
+    ${NASSP_SOURCE_ROOT}/src_aux
+    ${NASSP_SOURCE_ROOT}/src_csm
+    ${NASSP_SOURCE_ROOT}/src_launch
+    ${NASSP_SOURCE_ROOT}/src_lm
+    ${NASSP_SOURCE_ROOT}/src_mfd
+    ${NASSP_SOURCE_ROOT}/src_soyuz
     ${NASSP_SOURCE_ROOT}/src_sys
     ${NASSP_SOURCE_ROOT}/src_sys/PanelSDK
     ${ORBITERSDK_DIR}/include
     ${ORBITERSDK_DIR}/XRSound
 )
 set(SOURCES
-    "../../src_soyuz/Soyuz7k_TM.cpp"
+    ${NASSP_SOURCE_ROOT}/src_soyuz/Soyuz7k_TM.cpp
+    ${NASSP_SOURCE_ROOT}/src_soyuz/SoyuzConnector.cpp
+    ${NASSP_SOURCE_ROOT}/src_sys/connector.cpp
+    ${NASSP_SOURCE_ROOT}/src_sys/powersource.cpp
+    ${NASSP_SOURCE_ROOT}/src_sys/soundlib.cpp
 )
 
 link_directories(${ORBITERSDK_DIR}/lib)

@@ -1,7 +1,5 @@
-/****************************************************************************
+/***************************************************************************
 This file is part of Project Apollo - NASSP
-
-MCC for Skylab Missions (Header)
 
 Project Apollo is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -23,20 +21,18 @@ See http://nassp.sourceforge.net/license/ for more details.
 
 #pragma once
 
-//MISSION STATES: ASTP
+#include "Orbitersdk.h"
+#include "connector.h"
 
-#define MST_ASTP_PRELAUNCH 10
-#define MST_ASTP_INSERTION 20
-#define MST_ASTP_ACM_PRELIM 21
-#define MST_ASTP_ACM_FINAL 22
-#define MST_ASTP_NC1_PRELIM 23
-#define MST_ASTP_NC1_FINAL 24
-#define MST_ASTP_CSM_WT 25
-#define MST_ASTP_RNDZ_REFSMMAT 26
-#define MST_ASTP_LIFTOFF_UPDATE 27
-#define MST_ASTP_SOYUZ_CIRC 28
-#define MST_ASTP_CSM_ATS_SV 29
-#define MST_ASTP_BLOCK_33_48 30
-#define MST_ASTP_PCM_PRELIM 31
-#define MST_ASTP_PCM_FINAL 32
-#define MST_ASTP_NC2_PRELIM 33
+
+class Soyuz_VHFtoCSM_VHF_Connector : public Connector
+{
+public:
+	Soyuz_VHFtoCSM_VHF_Connector();
+	~Soyuz_VHFtoCSM_VHF_Connector();
+
+	void SendRF(double freq, double XMITpow, double XMITgain, double XMITphase, bool RangeTone);
+	bool ReceiveMessage(Connector* from, ConnectorMessage& m);
+protected:
+
+};

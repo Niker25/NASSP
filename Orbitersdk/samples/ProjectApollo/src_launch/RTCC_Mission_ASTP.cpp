@@ -30,7 +30,7 @@ See http://nassp.sourceforge.net/license/ for more details.
 #include "LVDC.h"
 #include "mcc.h"
 #include "rtcc.h"
-#include "../src_skylab/skylab.h"
+#include "../src_soyuz/Soyuz7k_TM.h"
 
 bool RTCC::CalculationMTP_ASTP(int fcn, LPVOID& pad, char* upString, char* upDesc, char* upMessage)
 {
@@ -518,6 +518,39 @@ bool RTCC::CalculationMTP_ASTP(int fcn, LPVOID& pad, char* upString, char* upDes
 			// give to mcc
 			strncpy(upString, uplinkdata, 1024 * 3);
 			sprintf(upDesc, "Lift-off Time, ATS State vector");
+		}
+	}
+	break;
+	case 18: //Command Soyuz to Prograde and autoburn Circ
+	{
+		Soyuz7k_TM* soyuz = (Soyuz7k_TM*)calcParams.tgt;
+
+		soyuz->ExecuteCirc();
+		sprintf(upMessage, "Soyuz to prograde Circ Attitude");
+
+	}
+	break;
+	case 19: //ATS S.V.
+	{
+		OBJHANDLE hATS = oapiGetVesselByName("ATS-6");
+		VESSEL* ats = NULL;
+		EphemerisData svATS;
+		char buffer1[1000];
+
+		if (hATS) {
+			ats = oapiGetVesselInterface(hATS);
+		}
+
+		if (ats) {
+			svATS = StateVectorCalcEphem(ats);
+			AGCStateVectorUpdate(buffer1, 1, RTCC_MPT_LM, svATS);
+		}
+
+		sprintf(uplinkdata, "%s", buffer1);
+		if (upString != NULL) {
+			// give to mcc
+			strncpy(upString, uplinkdata, 1024 * 3);
+			sprintf(upDesc, "ATS State vector");
 		}
 	}
 	break;

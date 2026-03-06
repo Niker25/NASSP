@@ -9,61 +9,10 @@
 // To force Orbitersdk.h to use <fstream> in any compiler version
 #pragma include_alias( <fstream.h>, <fstream> )
 #include "Orbitersdk.h"
-
-// Vessel Parameters
-class Soyuz7k_TM : public VESSEL4 {
-public:
-	Soyuz7k_TM(OBJHANDLE hVessel, int flightmodel);
-	~Soyuz7k_TM();
-	void clbkPostCreation();
-	void clbkSetClassCaps(FILEHANDLE cfg);
-	void clbkPreStep(double simt, double simdt, double mjd);
-	void clbkSaveState(FILEHANDLE scn);
-	void clbkLoadStateEx(FILEHANDLE scn, void* status);
-	int clbkConsumeBufferedKey(DWORD key, bool down, char* kstate);
-	void clbkFocusChanged(bool getfocus, OBJHANDLE hNewVessel, OBJHANDLE hOldVessel);
-	void clbkGetRadiationForce(const VECTOR3& mflux, VECTOR3& F, VECTOR3& pos);
-	void CalcApses();
-	void CalcCircular();
-	void CalcIBurn();
-	void ArmAutoBurn();
-	void APTimeStep(double simt);
-	bool clbkDrawHUD(int mode, const HUDPAINTSPEC* hps, oapi::Sketchpad* skp);
-	THRUSTER_HANDLE th_main;
-
-private:
-	ATTACHMENTHANDLE hAttach;
-	DOCKHANDLE hDock;
-	MESHHANDLE hT_AF_PAO, hTM_BO, hOK_SA, hok_vc, hOK_cabling;
-	BEACONLIGHTSPEC blinklights[2], attlights[4];
-	VECTOR3 blinklights_pos[2], attlights_pos[4];
-	bool blinklightsActive, attlightsActive;
-	double visibilitySize;
-	PROPELLANT_HANDLE hpPAO;
-	PROPELLANT_HANDLE hpSA;
-
-	bool IsArmed = false;
-	bool IsEngaged = false;
-	bool IsCircular = false;
-	bool ManualAbort = false;
-
-	double dv = 0.0;
-	double IBurn = 0.0;
-	double IBurn2 = 0.0;
-
-	double EReference = 0.0;
-	double ECutoff = 0.0;
-
-	double mu, a, e;
-	double IPeri, IApo;
-	double Rperi, Rapo;
-
-	int cam_status, gc_cam_status, hud_dsp;
-};
+#include "Soyuz7k_TM.h"
 
 // Vessel functions
-Soyuz7k_TM::Soyuz7k_TM(OBJHANDLE hVessel, int flightmodel)
-	: VESSEL4(hVessel, flightmodel)
+Soyuz7k_TM::Soyuz7k_TM(OBJHANDLE hObj, int fmodel) : ProjectApolloConnectorVessel(hObj, fmodel)
 {
 }
 
@@ -319,19 +268,6 @@ int Soyuz7k_TM::clbkConsumeBufferedKey(DWORD key, bool down, char* kstate)
 	else { // unmodified keys
 		switch (key)
 		{
-		case OAPI_KEY_C:
-
-			CalcApses();
-			CalcCircular();
-			CalcIBurn();
-
-			if (!IsArmed) {
-				ArmAutoBurn();
-			}
-			else {
-				IsArmed = false;
-			}
-			return 1;
 		}
 	}
 	return 0;
@@ -343,21 +279,23 @@ int Soyuz7k_TM::clbkConsumeBufferedKey(DWORD key, bool down, char* kstate)
 // --------------------------------------------------------------
 // Module initialisation
 // --------------------------------------------------------------
-DLLCLBK void InitModule(HINSTANCE hModule)
-{
-}
-
-DLLCLBK void ExitModule(HINSTANCE hModule)
-{
-}
+//DLLCLBK void InitModule(HINSTANCE hModule)
+//{
+//}
+//
+//DLLCLBK void ExitModule(HINSTANCE hModule)
+//{
+//}
 
 // --------------------------------------------------------------
 // Vessel initialisation
 // --------------------------------------------------------------
 DLLCLBK VESSEL* ovcInit(OBJHANDLE hvessel, int flightmodel)
 {
-	return new Soyuz7k_TM(hvessel, flightmodel);
+	VESSEL* soyuz;
+	soyuz = new Soyuz7k_TM(hvessel, flightmodel);
 
+	return soyuz;
 }
 
 // --------------------------------------------------------------
@@ -365,8 +303,9 @@ DLLCLBK VESSEL* ovcInit(OBJHANDLE hvessel, int flightmodel)
 // --------------------------------------------------------------
 DLLCLBK void ovcExit(VESSEL* vessel)
 {
-	if (vessel) delete (Soyuz7k_TM*)vessel;
-
+	if (vessel) {
+		delete (Soyuz7k_TM*)vessel;
+	}
 }
 
 void Soyuz7k_TM::clbkSaveState(FILEHANDLE scn)
@@ -535,6 +474,7 @@ void Soyuz7k_TM::APTimeStep(double simt)
 		SetThrusterGroupLevel(THGROUP_MAIN, 0.0);
 		IsEngaged = false;
 		IsArmed = false;
+		ActivateNavmode(NAVMODE_KILLROT);
 	}
 
 	// Manual disarm
@@ -542,7 +482,24 @@ void Soyuz7k_TM::APTimeStep(double simt)
 	{
 		SetThrusterGroupLevel(THGROUP_MAIN, 0.0);
 		IsEngaged = false;
+		ActivateNavmode(NAVMODE_KILLROT);
 	}
+}
+
+void Soyuz7k_TM::ExecuteCirc()
+{
+	CalcApses();
+	CalcCircular();
+	CalcIBurn();
+
+	if (!IsArmed) {
+		ArmAutoBurn();
+	}
+	else {
+		IsArmed = false;
+	}
+
+	ActivateNavmode(NAVMODE_PROGRADE);
 }
 
 bool Soyuz7k_TM::clbkDrawHUD(int mode, const HUDPAINTSPEC* hps, oapi::Sketchpad* skp)
@@ -632,4 +589,3 @@ bool Soyuz7k_TM::clbkDrawHUD(int mode, const HUDPAINTSPEC* hps, oapi::Sketchpad*
 	}
 	return true;
 }
-
