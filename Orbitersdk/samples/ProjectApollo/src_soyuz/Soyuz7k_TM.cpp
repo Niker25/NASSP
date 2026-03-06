@@ -23,6 +23,13 @@ public:
 	int clbkConsumeBufferedKey(DWORD key, bool down, char* kstate);
 	void clbkFocusChanged(bool getfocus, OBJHANDLE hNewVessel, OBJHANDLE hOldVessel);
 	void clbkGetRadiationForce(const VECTOR3& mflux, VECTOR3& F, VECTOR3& pos);
+	void CalcApses();
+	void CalcCircular();
+	void CalcIBurn();
+	void ArmAutoBurn();
+	void APTimeStep(double simt);
+	bool clbkDrawHUD(int mode, const HUDPAINTSPEC* hps, oapi::Sketchpad* skp);
+	THRUSTER_HANDLE th_main;
 
 private:
 	ATTACHMENTHANDLE hAttach;
@@ -34,6 +41,24 @@ private:
 	double visibilitySize;
 	PROPELLANT_HANDLE hpPAO;
 	PROPELLANT_HANDLE hpSA;
+
+	bool IsArmed = false;
+	bool IsEngaged = false;
+	bool IsCircular = false;
+	bool ManualAbort = false;
+
+	double dv = 0.0;
+	double IBurn = 0.0;
+	double IBurn2 = 0.0;
+
+	double EReference = 0.0;
+	double ECutoff = 0.0;
+
+	double mu, a, e;
+	double IPeri, IApo;
+	double Rperi, Rapo;
+
+	int cam_status, gc_cam_status, hud_dsp;
 };
 
 // Vessel functions
@@ -52,11 +77,6 @@ void Soyuz7k_TM::clbkPostCreation()
 
 	if (oapiGetFocusObject() == GetHandle()) { SetSize(10); }
 	else { SetSize(visibilitySize); }
-}
-
-void Soyuz7k_TM::clbkPreStep(double simt, double simdt, double mjd)
-{
-	//sprintf(oapiDebugString(), "size %0.1f", GetSize());
 }
 
 void Soyuz7k_TM::clbkSetClassCaps(FILEHANDLE cfg)
@@ -98,7 +118,7 @@ void Soyuz7k_TM::clbkSetClassCaps(FILEHANDLE cfg)
 	SURFHANDLE atrcs = oapiRegisterExhaustTexture("dragon1/Dragon_atrcs");
 
 	//Thrusters definition
-	THRUSTER_HANDLE th_main = CreateThruster(_V(0, 0, -3.35), _V(0, 0, 1), 4090.0, hpPAO, 2763.6);
+	th_main = CreateThruster(_V(0, 0, -3.35), _V(0, 0, 1), 4090.0, hpPAO, 2763.6);
 
 	THRUSTER_HANDLE th_fwd[4];
 	th_fwd[0] = CreateThruster(_V(0, -0.375, -3.45), _V(0, 0, 1), 62.5, hpPAO, 1e7);
@@ -299,6 +319,19 @@ int Soyuz7k_TM::clbkConsumeBufferedKey(DWORD key, bool down, char* kstate)
 	else { // unmodified keys
 		switch (key)
 		{
+		case OAPI_KEY_C:
+
+			CalcApses();
+			CalcCircular();
+			CalcIBurn();
+
+			if (!IsArmed) {
+				ArmAutoBurn();
+			}
+			else {
+				IsArmed = false;
+			}
+			return 1;
 		}
 	}
 	return 0;
@@ -417,3 +450,186 @@ void Soyuz7k_TM::clbkGetRadiationForce(const VECTOR3& mflux, VECTOR3& F, VECTOR3
 	F = mflux * (cs * albedo);
 	pos = _V(0, 0, 0);        // don't induce torque
 }
+
+void Soyuz7k_TM::clbkPreStep(double simt, double simdt, double mjd)
+{
+	APTimeStep(simt);
+}
+
+void Soyuz7k_TM::CalcApses()
+{
+	ELEMENTS el;
+	double MJDRef;
+
+	OBJHANDLE ref = GetElements(el, MJDRef);
+
+	e = el.e;
+	a = el.a;
+	mu = oapiGetMass(ref) * GGRAV;
+
+	double n = sqrt((e < 1 ? 1 : -1) * mu / (a * a * a));
+	double M = el.L - el.omegab;
+
+	double MJD = oapiTime2MJD(oapiGetSimTime());
+	M += n * (MJD - MJDRef) * 86400;
+
+	while (M < 0) M += 2 * PI;
+	while (M > 2 * PI) M -= 2 * PI;
+
+	IPeri = -M / n;
+	double Period = (2 * PI) / n;
+
+	Rperi = a * (1 - e);
+	Rapo = a * (1 + e);
+
+	IApo = IPeri + Period / 2;
+
+	while (IPeri < 0) IPeri += Period;
+	while (IApo < 0) IApo += Period;
+}
+
+void Soyuz7k_TM::CalcCircular()
+{
+	double Rapse = Rapo;
+	double Vcirc = sqrt(mu / Rapse);
+	double Vapse = sqrt(2 * mu / Rapse - mu / a);
+
+	dv = fabs(Vcirc - Vapse);
+}
+
+double RocketEqnT(double dv, double m, double F, double isp)
+{
+	return (dv * m / (2.0 * F)) * (1 + exp(-dv / isp));
+}
+
+void Soyuz7k_TM::CalcIBurn()
+{
+	double F = GetThrusterMax0(th_main);
+	double isp = GetThrusterIsp0(th_main);
+	double m = GetMass();
+
+	IBurn = RocketEqnT(dv, m, F, isp);
+	IBurn2 = RocketEqnT(dv / 2.0, m, F, isp);
+}
+
+void Soyuz7k_TM::ArmAutoBurn()
+{
+	EReference = oapiGetSimTime() + IApo;
+	IsArmed = true;
+}
+
+void Soyuz7k_TM::APTimeStep(double simt)
+{
+	// Auto Burn Ignition
+	if (IsArmed && !IsEngaged && simt >= (EReference - IBurn2))
+	{
+		SetThrusterGroupLevel(THGROUP_MAIN, 1.0);
+		IsEngaged = true;
+		IsCircular = false;
+		ECutoff = simt + IBurn;
+	}
+
+	// End of Auto Burn
+	if (IsEngaged && simt >= ECutoff)
+	{
+		SetThrusterGroupLevel(THGROUP_MAIN, 0.0);
+		IsEngaged = false;
+		IsArmed = false;
+	}
+
+	// Manual disarm
+	if (!IsArmed && IsEngaged)
+	{
+		SetThrusterGroupLevel(THGROUP_MAIN, 0.0);
+		IsEngaged = false;
+	}
+}
+
+bool Soyuz7k_TM::clbkDrawHUD(int mode, const HUDPAINTSPEC* hps, oapi::Sketchpad* skp)
+{
+	int s = hps->H;
+	double d = (s * 0.00130208);
+
+	VESSEL4::clbkDrawHUD(mode, hps, skp);
+
+	int sw = ((hps->W));
+	int lw = (int)(16 * sw / 1024);
+	int lwoffset = sw - (18 * lw);
+	int hlw = (int)(lw / 2);
+
+
+	int roxl = 0;
+	int royl = 0;
+
+	double ds = s;
+	double dsw = sw;
+	double sc_ratio = ds / dsw;
+
+
+	if (sc_ratio < 0.7284)
+	{
+		roxl = (lw * 10);
+		royl = (int)(-88 * d);
+	}
+
+	int wd = (int)(136 * d);
+	int wc = (int)(152 * d);
+	int w0 = (int)(168 * d);
+	int w1 = (int)(184 * d);
+	int w2 = (int)(200 * d);
+	int w3 = (int)(216 * d);
+	int w4 = (int)(232 * d);
+	int w5 = (int)(248 * d);
+	int w6 = (int)(264 * d);
+	int w7 = (int)(280 * d);
+	int w8 = (int)(296 * d);
+	int w9 = (int)(312 * d);
+	int w10 = (int)(328 * d);
+	int w11 = (int)(344 * d);
+	int w12 = (int)(360 * d);
+	int w13 = (int)(376 * d);
+	int w14 = (int)(392 * d);
+	int w15 = (int)(408 * d);
+	int w16 = (int)(424 * d);
+
+	if (oapiCockpitMode() != COCKPIT_VIRTUAL)
+	{
+		char abuf[256];
+
+		sprintf(abuf, "AUTO CIRCULARIZATION");
+		skp->Text((10 + roxl), (wc + royl), abuf, strlen(abuf));
+
+		double dv_remaining = dv;
+		if (IsEngaged) {
+			double burnTimeLeft = ECutoff - oapiGetSimTime();
+			if (burnTimeLeft < 0.0) burnTimeLeft = 0.0;
+			dv_remaining = dv * (burnTimeLeft / IBurn);
+		}
+		sprintf(abuf, "dV: %.2f m/s", dv_remaining);
+		skp->Text((10 + roxl), (w0 + royl), abuf, strlen(abuf));
+
+		if (IsEngaged) {
+			double burnTimeLeft = ECutoff - oapiGetSimTime();
+			if (burnTimeLeft < 0.0) burnTimeLeft = 0.0;
+			sprintf(abuf, "Burn time left: %.2f s", burnTimeLeft);
+		}
+		else {
+			sprintf(abuf, "Burn time: %.2f s", IBurn);
+		}
+		skp->Text((10 + roxl), (w1 + royl), abuf, strlen(abuf));
+
+		double timeToIgnition = 0.0;
+			timeToIgnition = EReference - oapiGetSimTime() - IBurn2;
+			if (timeToIgnition < 0.0) timeToIgnition = 0.0;
+			sprintf(abuf, "Time to Burn: %.2f s", timeToIgnition);
+			skp->Text((10 + roxl), (w2 + royl), abuf, strlen(abuf));
+
+		sprintf(abuf, "Armed: %s", IsArmed ? "YES" : "NO");
+		skp->Text((10 + roxl), (w3 + royl), abuf, strlen(abuf));
+
+		sprintf(abuf, "Engaged: %s", IsEngaged ? "YES" : "NO");
+		skp->Text((10 + roxl), (w4 + royl), abuf, strlen(abuf));
+	}
+	return true;
+}
+

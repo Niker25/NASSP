@@ -57,6 +57,9 @@ bool RTCC::CalculationMTP_ASTP(int fcn, LPVOID& pad, char* upString, char* upDes
 		sprintf_s(Buff, "P10,CSM,%d:%d:%.2lf;", hh, mm, ss);
 		GMGMED(Buff);
 
+		//P10 MED: Soyuz liftoff time
+		GMGMED("P10,LEM,12:20:00.0;");
+
 		//P15: CMC, clock zero
 		sprintf_s(Buff, "P15,AGC,%d:%d:%.2lf;", hh, mm, ss);
 		GMGMED(Buff);
@@ -78,6 +81,7 @@ bool RTCC::CalculationMTP_ASTP(int fcn, LPVOID& pad, char* upString, char* upDes
 
 		OrbMech::SStoHHMMSS(LaunchMJD * 3600.0, hh, mm, ss, 0.01);
 
+		//P10 Enter CSM & Soyuz Liftoff time
 		sprintf_s(Buff, "P10,CSM,%d:%d:%.2lf;", hh, mm, ss);
 		GMGMED(Buff);
 
@@ -142,14 +146,14 @@ bool RTCC::CalculationMTP_ASTP(int fcn, LPVOID& pad, char* upString, char* upDes
 		GeneralManeuverProcessor(&gmpopt, dV_imp, TIG_imp);
 
 		in.CONFIG = 1; //CSM
-		in.CSMWeight = calcParams.src->GetMass();
+		in.CSMWeight = calcParams.src->GetMass() + 1740.888; //CSM + DM Weight
 		in.sv_before = PZGPMELM.SV_before;
 		in.V_aft = PZGPMELM.V_after;
 		in.DETU = 20.0; //Ullage
 		in.UT = false; //2 jets
 		in.IgnitionTimeOption = false;
 		in.IterationFlag = false;
-		in.LMWeight = 1740.888;
+		in.LMWeight = 0.0;
 		in.Thruster = RTCC_ENGINETYPE_CSMSPS;
 		in.VC = RTCC_MANVEHICLE_CSM;
 		in.VehicleArea = PZMPTCSM.ConfigurationArea;
@@ -462,6 +466,61 @@ bool RTCC::CalculationMTP_ASTP(int fcn, LPVOID& pad, char* upString, char* upDes
 			sprintf(upDesc, "Rendezvous REFSMMAT");
 		}
 	}
+	break;
+	case 17: //Liftoff Time update -7h30min & ATS S.V.
+	{
+		//P10 MED: Enter updated liftoff time
+		double tephem_scal;
+		char buffer1[1000];
+		char buffer2[1000];
+		Saturn* cm = (Saturn*)calcParams.src;
+		OBJHANDLE hATS = oapiGetVesselByName("ATS-6");
+		VESSEL* ats = NULL;
+		EphemerisData svATS;
+		
+		if (hATS) {
+			ats = oapiGetVesselInterface(hATS);
+		}
+
+		//Get TEPHEM
+		tephem_scal = GetTEPHEMFromAGC(&cm->agc.vagc, true);
+		double LaunchMJD = (tephem_scal / 8640000.) + SystemParameters.TEPHEM0;
+		LaunchMJD = (LaunchMJD - SystemParameters.GMTBASE) * 24.0;
+
+		//Save original CSM Liftoff time
+		double LaunchMJD_original = LaunchMJD;
+
+		//Subtract 7h30
+		double LaunchMJD_updated = LaunchMJD_original - 7.5;
+
+		//dT between original and updated Liftoff time
+		double LaunchMJD_diff = LaunchMJD_updated - LaunchMJD_original;
+
+		int hh, mm;
+		double ss;
+
+		OrbMech::SStoHHMMSS(LaunchMJD_updated * 3600.0, hh, mm, ss, 0.01);
+
+		sprintf_s(Buff, "P10,CSM,%d:%d:%.2lf;", hh, mm, ss); //P10 Update CSM Liftoff time
+		GMGMED(Buff);
+		sprintf_s(Buff, "P15,AGC,%d:%d:%.2lf;", hh, mm, ss); //P15: CMC, clock zero
+		GMGMED(Buff);
+
+		IncrementAGCLiftoffTime(buffer1, RTCC_MPT_CSM, LaunchMJD_diff * 3600);
+
+		if (ats) {
+			svATS = StateVectorCalcEphem(ats);
+			AGCStateVectorUpdate(buffer2, 1, RTCC_MPT_LM, svATS);
+		}
+
+		sprintf(uplinkdata, "%s%s", buffer1, buffer2);
+		if (upString != NULL) {
+			// give to mcc
+			strncpy(upString, uplinkdata, 1024 * 3);
+			sprintf(upDesc, "Lift-off Time, ATS State vector");
+		}
+	}
+	break;
 	}
 	return scrubbed;
 }
