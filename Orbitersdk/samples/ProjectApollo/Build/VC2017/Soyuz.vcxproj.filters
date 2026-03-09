@@ -15,6 +15,12 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
+     <ClInclude Include="..\..\src_launch\mcc.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+     <ClInclude Include="..\..\src_launch\MCC_Calculations.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\src_soyuz\Soyuz7k_TM.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -35,6 +41,12 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
+      <ClCompile Include="..\..\src_launch\MCC_Calculations.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src_launch\mcc.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\src_soyuz\Soyuz7k_TM.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>

@@ -139,6 +139,70 @@ struct SLTPI {
 	bool prelim;
 };
 
+// ASTP - MANEUVER
+struct ASTPMNV {
+	double GETI;		// TIG
+	VECTOR3 dV;			// P30 dV
+	double Vc;			// EMS dV
+	double Weight;		// Vehicle weight
+	double pTrim, yTrim; // SPS pitch/yaw trim
+	double burntime;	// Burn time
+	VECTOR3 Att;		// Attitude at TIG
+	char remarks[256];	// remarks
+	int type;           // 1 = ACM, 2 = NC1, 3 = NPC, 4 = NC2, 5 = PCM, 6 = NCC, 7 = NSR
+	bool prelim;		// preliminary or final pad
+	int Star;			// Nav star for orientation check
+	double Shaft, Trun;  // Shaft and trunnion values for orientation check
+};
+
+// ASTP - BLOCK DATA
+struct ASTPBLK {
+	char purpose[64];	// PURPOSE
+	double GETI;		// TIG
+	VECTOR3 dV;			// P30 dV
+	double HA, HP;		// Predicted apogee/perigee after maneuver
+	double Vc;			// EMS dV
+	double Weight;		// Vehicle weight
+	double pTrim, yTrim; // SPS pitch/yaw trim
+	double burntime;	// Burn time
+	int Star;			// Nav star for orientation check
+	double Shaft, Trun;  // Shaft and trunnion values for orientation check
+	VECTOR3 Att;		// Attitude at TIG
+	double NavChk;		// Time for nav check
+	double lat;			// Latitude for N43
+	double lng;			// Longitude for N43
+	double alt;			// Altitude for N43
+	// Pre-burn
+	char Area[2][10];	// XXX.YY where XXX is rev and YY is recovery area/supt caps
+	double dVTO[2];		// Tailoff dV from EMS
+	VECTOR3 Att400K[2];	// R/P/Y gimbal angle to ensure capture
+	double RTGO[2];		// Range to go from .05G
+	double VIO[2];		// Inertial velocity at .05G
+	double Ret05[2];	// Time from retro fire to .05G
+	double Lat[2];		// Target point lat
+	double Lng[2];		// Target point lng
+	double Ret2[2];		// Time from retro fire to .2G
+	double DRE[2];		// Downrange error at .2G
+	double BankAN[2];	// Backup bank angle SCS type entry (sign = roll left/right)
+	double RetRB[2];	// Ret to reverse backup bank angle
+	double RetBBO[2];	// Ret to begin blackout
+	double RetEBO[2];	// Ret to end blackout
+	double RetDrog[2];	// Ret to drogue deploy
+	// Post-burn
+	double PB_R400K[2];	// Roll entry gimbal angle to ensure capture
+	double PB_RTGO[2];	// Range to go from .05G
+	double PB_VIO[2];	// Inertial velocity at .05G
+	double PB_Ret05[2];	// Time from retro fire to .05G
+	double PB_Ret2[2];	// Time from retro fire to .2G
+	double PB_DRE[2];	// Downrange error at .2G
+	double PB_BankAN[2];// Backup bank angle SCS type entry (sign = roll left/right)
+	double PB_RetRB[2];	// Ret to reverse backup bank angle
+	double PB_RetBBO[2];// Ret to begin blackout
+	double PB_RetEBO[2];// Ret to end blackout
+	double PB_RetDrog[2];// Ret to drogue deploy
+	char remarks[256];	// remarks
+};
+
 // APOLLO 7 - ENTRY UPDATE
 struct AP7ENT {
 	// Pre-burn

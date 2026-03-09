@@ -317,6 +317,48 @@ void Soyuz7k_TM::clbkSaveState(FILEHANDLE scn)
 
 	sprintf(cbuf, "%d", attlightsActive);
 	oapiWriteScenario_string(scn, "ATT", cbuf);
+
+	sprintf(cbuf, "%d", IsEngaged);
+	oapiWriteScenario_string(scn, "ISENGAGED", cbuf);
+
+	sprintf(cbuf, "%d", IsCircular);
+	oapiWriteScenario_string(scn, "ISCIRCULAR", cbuf);
+
+	sprintf(cbuf, "%d", ManualAbort);
+	oapiWriteScenario_string(scn, "MANUALABORT", cbuf);
+
+	sprintf(cbuf, "%d", IsPrograde);
+	oapiWriteScenario_string(scn, "ISPROGRADE", cbuf);
+
+	sprintf(cbuf, "%lf", dv);
+	oapiWriteScenario_string(scn, "DV", cbuf);
+
+	sprintf(cbuf, "%lf", IBurn);
+	oapiWriteScenario_string(scn, "IBURN", cbuf);
+
+	sprintf(cbuf, "%lf", IBurn2);
+	oapiWriteScenario_string(scn, "IBURN2", cbuf);
+
+	sprintf(cbuf, "%lf", ECutoff);
+	oapiWriteScenario_string(scn, "ECUTOFF", cbuf);
+
+	sprintf(cbuf, "%lf", IPeri);
+	oapiWriteScenario_string(scn, "IPERI", cbuf);
+
+	sprintf(cbuf, "%lf", IApo);
+	oapiWriteScenario_string(scn, "IAPO", cbuf);
+
+	sprintf(cbuf, "%lf", Rperi);
+	oapiWriteScenario_string(scn, "RPERI", cbuf);
+
+	sprintf(cbuf, "%lf", Rapo);
+	oapiWriteScenario_string(scn, "RAPO", cbuf);
+
+	sprintf(cbuf, "%lf", TIG);
+	oapiWriteScenario_string(scn, "TIG", cbuf);
+
+	sprintf(cbuf, "%d", IsArmed);
+	oapiWriteScenario_string(scn, "ISARMED", cbuf);
 }
 
 void Soyuz7k_TM::clbkLoadStateEx(FILEHANDLE scn, void* vs)
@@ -331,6 +373,65 @@ void Soyuz7k_TM::clbkLoadStateEx(FILEHANDLE scn, void* vs)
 		else if (!_strnicmp(line, "ATT", 3))
 		{
 			sscanf(line + 3, "%d", &attlightsActive);
+		}
+		else if (!_strnicmp(line, "MANUALABORT", 11))
+		{
+			sscanf(line + 11, "%d", &ManualAbort);
+		}
+		else if (!_strnicmp(line, "ISCIRCULAR", 10))
+		{
+			sscanf(line + 10, "%d", &IsCircular);
+		}
+		else if (!_strnicmp(line, "ISPROGRADE", 10))
+		{
+			sscanf(line + 10, "%d", &IsPrograde);
+		}
+		else if (!_strnicmp(line, "ISENGAGED", 9))
+		{
+			sscanf(line + 9, "%d", &IsEngaged);
+		}
+		else if (!_strnicmp(line, "ECUTOFF", 7))
+		{
+			sscanf(line + 7, "%lf", &ECutoff);
+		}
+		else if (!_strnicmp(line, "IBURN2", 6))
+		{
+			sscanf(line + 6, "%lf", &IBurn2);
+		}
+		else if (!_strnicmp(line, "IBURN", 5))
+		{
+			sscanf(line + 5, "%lf", &IBurn);
+		}
+		else if (!_strnicmp(line, "IPERI", 5))
+		{
+			sscanf(line + 5, "%lf", &IPeri);
+		}
+		else if (!_strnicmp(line, "IAPO", 4))
+		{
+			sscanf(line + 4, "%lf", &IApo);
+		}
+		else if (!_strnicmp(line, "RPERI", 5))
+		{
+			sscanf(line + 5, "%lf", &Rperi);
+		}
+		else if (!_strnicmp(line, "RAPO", 4))
+		{
+			sscanf(line + 4, "%lf", &Rapo);
+		}
+		else if (!_strnicmp(line, "TIG", 3))
+		{
+			sscanf(line + 3, "%lf", &TIG);
+		}
+		else if (!_strnicmp(line, "DV", 2))
+		{
+			sscanf(line + 2, "%lf", &dv);
+		}
+		else if (!_strnicmp(line, "ISARMED", 7))
+		{
+			sscanf(line + 7, "%d", &IsArmed);
+			char buf[128];
+			sprintf(buf, "DEBUG: Loaded ISARMED = %d", IsArmed);
+			oapiWriteLog(buf);
 		}
 		else
 		{
@@ -356,6 +457,10 @@ void Soyuz7k_TM::clbkLoadStateEx(FILEHANDLE scn, void* vs)
 			attlights[i].active = true;
 		}
 	}
+
+	char buf[128];
+	sprintf(buf, "DEBUG: Loaded ISARMED after finish= %d", IsArmed);
+	oapiWriteLog(buf);
 }
 
 void Soyuz7k_TM::clbkFocusChanged(bool getfocus, OBJHANDLE hNewVessel, OBJHANDLE hOldVessel)
@@ -393,6 +498,7 @@ void Soyuz7k_TM::clbkGetRadiationForce(const VECTOR3& mflux, VECTOR3& F, VECTOR3
 void Soyuz7k_TM::clbkPreStep(double simt, double simdt, double mjd)
 {
 	APTimeStep(simt);
+	ManeuverPrograde();
 }
 
 void Soyuz7k_TM::CalcApses()
@@ -453,27 +559,35 @@ void Soyuz7k_TM::CalcIBurn()
 
 void Soyuz7k_TM::ArmAutoBurn()
 {
-	EReference = oapiGetSimTime() + IApo;
+	double mjd = oapiGetSimMJD();
+	TIG = mjd + IApo / 86400.0 - IBurn2 / 86400.0;
+	ECutoff = TIG + IBurn / 86400.0;
 	IsArmed = true;
 }
 
 void Soyuz7k_TM::APTimeStep(double simt)
 {
 	// Auto Burn Ignition
-	if (IsArmed && !IsEngaged && simt >= (EReference - IBurn2))
+	double mjd = oapiGetSimMJD();
+
+	if (IsArmed && !IsEngaged && mjd >= TIG)
 	{
 		SetThrusterGroupLevel(THGROUP_MAIN, 1.0);
 		IsEngaged = true;
 		IsCircular = false;
-		ECutoff = simt + IBurn;
+
+		ECutoff = mjd + IBurn / 86400.0;
 	}
 
 	// End of Auto Burn
-	if (IsEngaged && simt >= ECutoff)
+	if (IsEngaged && mjd >= ECutoff)
 	{
 		SetThrusterGroupLevel(THGROUP_MAIN, 0.0);
 		IsEngaged = false;
 		IsArmed = false;
+		IsCircular = true;
+		IsPrograde = false;
+
 		ActivateNavmode(NAVMODE_KILLROT);
 	}
 
@@ -482,6 +596,7 @@ void Soyuz7k_TM::APTimeStep(double simt)
 	{
 		SetThrusterGroupLevel(THGROUP_MAIN, 0.0);
 		IsEngaged = false;
+		IsPrograde = false;
 		ActivateNavmode(NAVMODE_KILLROT);
 	}
 }
@@ -495,11 +610,24 @@ void Soyuz7k_TM::ExecuteCirc()
 	if (!IsArmed) {
 		ArmAutoBurn();
 	}
-	else {
-		IsArmed = false;
-	}
 
-	ActivateNavmode(NAVMODE_PROGRADE);
+	IsPrograde = true;
+
+	char buffer[256];
+	sprintf(buffer, "TIG = %f", TIG);
+	oapiWriteLog(buffer);
+}
+
+void Soyuz7k_TM::ManeuverPrograde()
+{
+	if (IsPrograde) {
+		ActivateNavmode(NAVMODE_PROGRADE);
+		IsPrograde = true;
+	}
+	else {
+		DeactivateNavmode(NAVMODE_PROGRADE);
+		IsPrograde = false;
+	}
 }
 
 bool Soyuz7k_TM::clbkDrawHUD(int mode, const HUDPAINTSPEC* hps, oapi::Sketchpad* skp)
@@ -553,21 +681,31 @@ bool Soyuz7k_TM::clbkDrawHUD(int mode, const HUDPAINTSPEC* hps, oapi::Sketchpad*
 	{
 		char abuf[256];
 
+		double mjd = oapiGetSimMJD();
+		double dv_remaining = dv;
+
 		sprintf(abuf, "AUTO CIRCULARIZATION");
 		skp->Text((10 + roxl), (wc + royl), abuf, strlen(abuf));
 
-		double dv_remaining = dv;
+		// Remaining DV
 		if (IsEngaged) {
-			double burnTimeLeft = ECutoff - oapiGetSimTime();
+			double burnTimeLeft = (ECutoff - mjd) * 86400.0;
 			if (burnTimeLeft < 0.0) burnTimeLeft = 0.0;
+
 			dv_remaining = dv * (burnTimeLeft / IBurn);
+
+			sprintf(abuf, "dV: %.2f m/s", dv_remaining);
 		}
-		sprintf(abuf, "dV: %.2f m/s", dv_remaining);
+		else {
+			sprintf(abuf, "dV: %.2f m/s", dv);
+		}
 		skp->Text((10 + roxl), (w0 + royl), abuf, strlen(abuf));
 
+		// Burn time
 		if (IsEngaged) {
-			double burnTimeLeft = ECutoff - oapiGetSimTime();
+			double burnTimeLeft = (ECutoff - mjd) * 86400.0;
 			if (burnTimeLeft < 0.0) burnTimeLeft = 0.0;
+
 			sprintf(abuf, "Burn time left: %.2f s", burnTimeLeft);
 		}
 		else {
@@ -575,15 +713,18 @@ bool Soyuz7k_TM::clbkDrawHUD(int mode, const HUDPAINTSPEC* hps, oapi::Sketchpad*
 		}
 		skp->Text((10 + roxl), (w1 + royl), abuf, strlen(abuf));
 
-		double timeToIgnition = 0.0;
-			timeToIgnition = EReference - oapiGetSimTime() - IBurn2;
-			if (timeToIgnition < 0.0) timeToIgnition = 0.0;
-			sprintf(abuf, "Time to Burn: %.2f s", timeToIgnition);
-			skp->Text((10 + roxl), (w2 + royl), abuf, strlen(abuf));
+		// Time to ignition
+		double timeToIgnition = (TIG - oapiGetSimMJD()) * 86400.0;
+		if (timeToIgnition < 0.0)
+			timeToIgnition = 0.0;
+		sprintf(abuf, "Time to Burn: %.2f s", timeToIgnition);
+		skp->Text((10 + roxl), (w2 + royl), abuf, strlen(abuf));
 
+		//Engine armed
 		sprintf(abuf, "Armed: %s", IsArmed ? "YES" : "NO");
 		skp->Text((10 + roxl), (w3 + royl), abuf, strlen(abuf));
 
+		//Engine Burning
 		sprintf(abuf, "Engaged: %s", IsEngaged ? "YES" : "NO");
 		skp->Text((10 + roxl), (w4 + royl), abuf, strlen(abuf));
 	}

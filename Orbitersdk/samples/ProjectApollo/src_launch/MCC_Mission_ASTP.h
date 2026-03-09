@@ -34,9 +34,11 @@ See http://nassp.sourceforge.net/license/ for more details.
 #define MST_ASTP_CSM_WT 25
 #define MST_ASTP_RNDZ_REFSMMAT 26
 #define MST_ASTP_LIFTOFF_UPDATE 27
-#define MST_ASTP_SOYUZ_CIRC 28
-#define MST_ASTP_CSM_ATS_SV 29
-#define MST_ASTP_BLOCK_33_48 30
-#define MST_ASTP_PCM_PRELIM 31
-#define MST_ASTP_PCM_FINAL 32
-#define MST_ASTP_NC2_PRELIM 33
+#define MST_ASTP_SOYUZ_MNV 28
+#define MST_ASTP_SOYUZ_CIRC 29
+#define MST_ASTP_CSM_ATS_SV 30
+#define MST_ASTP_BLOCK_33 31
+#define MST_ASTP_BLOCK_48 32
+#define MST_ASTP_PCM_PRELIM 33
+#define MST_ASTP_PCM_FINAL 34
+#define MST_ASTP_NC2_PRELIM 35

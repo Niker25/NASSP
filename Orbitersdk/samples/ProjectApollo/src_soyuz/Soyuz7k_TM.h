@@ -49,7 +49,9 @@ public:
 	void CalcIBurn();
 	void ArmAutoBurn();
 	void APTimeStep(double simt);
+	void ManeuverPrograde();
 	bool clbkDrawHUD(int mode, const HUDPAINTSPEC* hps, oapi::Sketchpad* skp);
+	double GetBurn() const { return TIG; };
 	virtual void ExecuteCirc();
 	THRUSTER_HANDLE th_main;
 
@@ -63,6 +65,7 @@ private:
 	double visibilitySize;
 	PROPELLANT_HANDLE hpPAO;
 	PROPELLANT_HANDLE hpSA;
+	bool IsPrograde = false;
 
 	bool IsArmed = false;
 	bool IsEngaged = false;
@@ -73,12 +76,12 @@ private:
 	double IBurn = 0.0;
 	double IBurn2 = 0.0;
 
-	double EReference = 0.0;
 	double ECutoff = 0.0;
 
 	double mu, a, e;
 	double IPeri, IApo;
 	double Rperi, Rapo;
+	double TIG = 0;
 
 	int cam_status, gc_cam_status, hud_dsp;
 };

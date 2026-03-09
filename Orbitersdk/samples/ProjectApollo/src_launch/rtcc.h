@@ -236,6 +236,29 @@ struct AP7ManPADOpt
 	double UllageDT;			// Ullage duration, set to 0.0 if no ullage
 };
 
+struct ASTPBlockPADOpt
+{
+	ASTPBlockPADOpt();
+
+	double TIG;					// Time of Ignition
+	VECTOR3 dV_LVLH;			// Delta V in LVLH coordinates
+	int enginetype;				// Engine type used for the maneuver
+	bool HeadsUp;				// Orientation during the maneuver
+	MATRIX3 REFSMMAT;			// REFSMMAT during the maneuver
+	double sxtstardtime;		// Time delay for the sextant star check (in case no star is available during the maneuver)
+	double navcheckGET;			// Time for the navcheck. 0 = no nav check
+	EphemerisData sv0;			// State vector as input
+	SV sv_deo;
+	PLAWDTOutput WeightsTable;	// Table with spacecraft weights
+	bool UllageThrusterOpt;		// false = 2 thrusters, true = 4 thrusters
+	double UllageDT;			// Ullage duration, set to 0.0 if no ullage
+	bool preburn;
+	double lat; //splashdown latitude
+	double lng; //splashdown longitude
+	double InitialBank = 0.0;
+	double GLevel = 0.2;
+};
+
 struct AP11ManPADOpt
 {
 	AP11ManPADOpt();
@@ -5197,6 +5220,8 @@ public:
 private:
 	void AP7ManeuverPAD(const AP7ManPADOpt &opt, AP7MNV &pad);
 	void SLManeuverPAD(const AP7ManPADOpt &opt, SLMNV &pad);
+	void ASTPManeuverPAD(const AP7ManPADOpt& opt, ASTPMNV& pad);
+	void ASTPBlockPAD(const ASTPBlockPADOpt&opt, ASTPBLK& pad);
 	void navcheck(VECTOR3 R, double GMT, int RBI, double &lat, double &lng, double &alt);
 	void AP7BlockData(AP7BLKOpt *opt, AP7BLK &pad);
 	void AP11BlockData(AP11BLKOpt *opt, P37PAD &pad);

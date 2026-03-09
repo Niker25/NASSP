@@ -19,6 +19,8 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\src_launch\mcc.h" />
+	<ClInclude Include="..\..\src_launch\MCC_Calculations.h" />
     <ClInclude Include="..\..\src_soyuz\Soyuz7k_TM.h" />
     <ClInclude Include="..\..\src_soyuz\SoyuzConnector.h" />
     <ClInclude Include="..\..\src_sys\connector.h" />
@@ -27,6 +29,8 @@
     <ClInclude Include="..\..\src_sys\soundlib.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\src_launch\MCC_Calculations.cpp" />
+	<ClCompile Include="..\..\src_launch\mcc.cpp" />
     <ClCompile Include="..\..\src_soyuz\Soyuz7k_TM.cpp" />
     <ClCompile Include="..\..\src_soyuz\SoyuzConnector.cpp" />
     <ClCompile Include="..\..\src_sys\connector.cpp" />

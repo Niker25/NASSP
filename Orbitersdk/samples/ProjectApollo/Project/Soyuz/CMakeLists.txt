@@ -7,6 +7,7 @@ set(INCLUDE_DIRS
     ${NASSP_SOURCE_ROOT}/src_lm
     ${NASSP_SOURCE_ROOT}/src_mfd
     ${NASSP_SOURCE_ROOT}/src_soyuz
+    ${NASSP_SOURCE_ROOT}/src_saturn
     ${NASSP_SOURCE_ROOT}/src_sys
     ${NASSP_SOURCE_ROOT}/src_sys/PanelSDK
     ${ORBITERSDK_DIR}/include

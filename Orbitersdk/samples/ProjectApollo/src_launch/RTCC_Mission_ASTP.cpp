@@ -114,7 +114,7 @@ bool RTCC::CalculationMTP_ASTP(int fcn, LPVOID& pad, char* upString, char* upDes
 	case 11: //ACM preliminary update
 	case 12: //ACM Final update
 	{
-		AP7MNV* form = (AP7MNV*)pad;
+		ASTPMNV* form = (ASTPMNV*)pad;
 		AP7ManPADOpt manopt;
 		VECTOR3 dV_LVLH, dV_imp;
 		double P30TIG, TIG_imp, GET_TH;
@@ -175,8 +175,10 @@ bool RTCC::CalculationMTP_ASTP(int fcn, LPVOID& pad, char* upString, char* upDes
 		manopt.sv0 = svCSM;
 		manopt.WeightsTable = GetWeightsTable(calcParams.src, true, true);
 
-		AP7ManeuverPAD(manopt, *form);
-		sprintf(form->purpose, "ACM");
+		ASTPManeuverPAD(manopt, *form);
+
+		form->type = 1;
+		form->prelim = preliminary;
 
 		if (preliminary)
 		{
@@ -526,11 +528,19 @@ bool RTCC::CalculationMTP_ASTP(int fcn, LPVOID& pad, char* upString, char* upDes
 		Soyuz7k_TM* soyuz = (Soyuz7k_TM*)calcParams.tgt;
 
 		soyuz->ExecuteCirc();
-		sprintf(upMessage, "Soyuz to prograde Circ Attitude");
+		char buffer[256];
+		sprintf(buffer, "GetBurn = %f", soyuz->GetBurn());
+		oapiWriteLog(buffer);
+		sprintf(upMessage, "Soyuz Maneuver Prograde");
 
 	}
 	break;
-	case 19: //ATS S.V.
+	case 19: //Soyuz execute burn
+	{
+		sprintf(upMessage, "Soyuz Circularization");
+	}
+	break;
+	case 20: //ATS S.V.
 	{
 		OBJHANDLE hATS = oapiGetVesselByName("ATS-6");
 		VESSEL* ats = NULL;
@@ -552,6 +562,207 @@ bool RTCC::CalculationMTP_ASTP(int fcn, LPVOID& pad, char* upString, char* upDes
 			strncpy(upString, uplinkdata, 1024 * 3);
 			sprintf(upDesc, "ATS State vector");
 		}
+	}
+	break;
+	case 21: //Block Data rev 33
+	{
+		ASTPBLK* form = (ASTPBLK*)pad;
+
+		ASTPBlockPADOpt opt;
+		double get_guess, lng_des, gmt_guess, gmt_min, gmt_max;
+		VehicleDataBlock sv0;
+		PLAWDTOutput WeightsTable;
+		EMSMISSInputTable intab;
+		EphemerisDataTable2 tab;
+
+		sv0 = StateVectorCalcDataBlock(calcParams.src);
+		WeightsTable = GetWeightsTable(calcParams.src, true, false);
+
+		get_guess = OrbMech::HHMMSSToSS(58, 0, 0);
+		lng_des = -160 * RAD;
+
+		//Generate epehemeris for recovery target selection
+		gmt_guess = GMTfromGET(get_guess);
+		gmt_min = gmt_guess;
+		gmt_max = gmt_guess + 2.75 * 60.0 * 60.0;
+
+		intab.AnchorVector = sv0.sv;
+		intab.EphemerisBuildIndicator = true;
+		intab.ECIEphemerisIndicator = true;
+		intab.ECIEphemTableIndicator = &tab;
+		intab.EphemerisLeftLimitGMT = gmt_min;
+		intab.EphemerisRightLimitGMT = gmt_max;
+		intab.ManCutoffIndicator = false;
+		intab.VehicleCode = RTCC_MPT_CSM;
+		intab.WeightsTable = &WeightsTable;
+		intab.useInputWeights = true;
+
+		EMSMISS(&intab);
+		tab.Header.TUP = 1;
+
+		//Run recovery target selection
+		RMDRTSD(tab, 1, gmt_guess, lng_des);
+
+		//Select first entry
+		RZJCTTC.R32_lat_T = RZDRTSD.table[0].Latitude * RAD;
+		RZJCTTC.R32_lng_T = RZDRTSD.table[0].Longitude * RAD;
+		RZJCTTC.R32_GETI = RZDRTSD.table[0].GET - 20.0 * 60.0;
+
+		//MEDs
+		RZJCTTC.R32_Code = 1;
+		RZJCTTC.Type = 1;
+
+		RZJCTTC.R31_Thruster = RTCC_ENGINETYPE_CSMSPS;
+		RZJCTTC.R31_GuidanceMode = 4;
+		RZJCTTC.R31_BurnMode = 1;
+		RZJCTTC.R31_dt = 0.0;
+		RZJCTTC.R31_dv = 57.912;
+		RZJCTTC.R31_AttitudeMode = 1;
+		RZJCTTC.R31_LVLHAttitude = _V(0.0, 180 * RAD, 0.0);
+		RZJCTTC.R31_UllageTime = 14.0;
+		RZJCTTC.R31_Use4UllageThrusters = false;
+		RZJCTTC.R31_REFSMMAT = 1;
+		RZJCTTC.R31_GimbalIndicator = -1;
+		RZJCTTC.R31_InitialBankAngle = 0.0;
+		RZJCTTC.R31_GLevel = 0.2;
+		RZJCTTC.R31_FinalBankAngle = 55.0 * RAD;
+
+		RMSDBMP(sv0.sv, WeightsTable.ConfigWeight);
+
+		//Save data
+		TimeofIgnition = RZRFDP.data[2].GETI;
+		SplashLatitude = RZRFDP.data[2].lat_T * RAD;
+		SplashLongitude = RZRFDP.data[2].lng_T * RAD;
+		DeltaV_LVLH = RZRFTT.Manual.DeltaV;
+
+		opt.dV_LVLH = DeltaV_LVLH;
+		opt.enginetype = RTCC_ENGINETYPE_CSMSPS;
+		opt.HeadsUp = false;
+		opt.navcheckGET = 0.0;
+		opt.REFSMMAT = GetREFSMMATfromAGC(&mcc->cm->agc.vagc, true);
+		opt.sxtstardtime = 0.0;
+		opt.TIG = TimeofIgnition;
+		opt.UllageDT = 14.0;
+		opt.UllageThrusterOpt = false;
+		opt.sv0 = sv0.sv;
+		opt.sv_deo = StateVectorCalc(calcParams.src);
+		opt.WeightsTable = WeightsTable;
+		opt.preburn = true;
+		opt.lat = SplashLatitude;
+		opt.lng = SplashLongitude;
+
+		ASTPBlockPAD(opt, *form);
+
+		sprintf(form->purpose, "REV 33");
+		sprintf(form->remarks, "1-Assumes no further Rendezvous maneuvers, 2-Assumes Rendezvous REFSMMAT, 3-CM-SM Sep yaw Right to 046, NOUN 48 PTRM = %.2f, YTRM = %.2f, CSM WGT = %.0f, DM WGT = 3838", form->pTrim, form->yTrim, form->Weight);
+	}
+	break;
+	case 22: //Block Data rev 48
+	{
+		ASTPBLK* form = (ASTPBLK*)pad;
+
+		ASTPBlockPADOpt opt;
+		double get_guess, lng_des, gmt_guess, gmt_min, gmt_max;
+		VehicleDataBlock svTPI;
+		PLAWDTOutput WeightsTable;
+		EMSMISSInputTable intab;
+		EphemerisDataTable2 tab;
+
+			mcc->mcc_calcs.RestoreStateVector(svTPI);
+			WeightsTable = GetWeightsTable(calcParams.src, true, false);
+
+			get_guess = OrbMech::HHMMSSToSS(82, 00, 0);
+			lng_des = -160 * RAD;
+
+			//Generate epehemeris for recovery target selection
+			gmt_guess = GMTfromGET(get_guess);
+			gmt_min = gmt_guess;
+			gmt_max = gmt_guess + 2.75 * 60.0 * 60.0;
+
+			intab.AnchorVector = svTPI.sv;
+			intab.EphemerisBuildIndicator = true;
+			intab.ECIEphemerisIndicator = true;
+			intab.ECIEphemTableIndicator = &tab;
+			intab.EphemerisLeftLimitGMT = gmt_min;
+			intab.EphemerisRightLimitGMT = gmt_max;
+			intab.ManCutoffIndicator = false;
+			intab.VehicleCode = RTCC_MPT_CSM;
+			intab.WeightsTable = &WeightsTable;
+			intab.useInputWeights = true;
+
+			EMSMISS(&intab);
+			tab.Header.TUP = 1;
+
+			//Run recovery target selection
+			RMDRTSD(tab, 1, gmt_guess, lng_des);
+
+			//Select first entry
+			RZJCTTC.R32_lat_T = RZDRTSD.table[0].Latitude * RAD;
+			RZJCTTC.R32_lng_T = RZDRTSD.table[0].Longitude * RAD;
+			RZJCTTC.R32_GETI = RZDRTSD.table[0].GET - 20.0 * 60.0;
+
+			//MEDs
+			RZJCTTC.R32_Code = 1;
+			RZJCTTC.Type = 1;
+
+			RZJCTTC.R31_Thruster = RTCC_ENGINETYPE_CSMSPS;
+			RZJCTTC.R31_GuidanceMode = 4;
+			RZJCTTC.R31_BurnMode = 1;
+			RZJCTTC.R31_dt = 0.0;
+			RZJCTTC.R31_dv = 60.96;
+			RZJCTTC.R31_AttitudeMode = 1;
+			RZJCTTC.R31_LVLHAttitude = _V(0.0, 180 * RAD, 0.0);
+			RZJCTTC.R31_UllageTime = 14.0;
+			RZJCTTC.R31_Use4UllageThrusters = false;
+			RZJCTTC.R31_REFSMMAT = 1;
+			RZJCTTC.R31_GimbalIndicator = -1;
+			RZJCTTC.R31_InitialBankAngle = 0.0;
+			RZJCTTC.R31_GLevel = 0.2;
+			RZJCTTC.R31_FinalBankAngle = 55.0 * RAD;
+
+			RMSDBMP(svTPI.sv, WeightsTable.ConfigWeight);
+
+			//Save data
+			TimeofIgnition = RZRFDP.data[2].GETI;
+			SplashLatitude = RZRFDP.data[2].lat_T * RAD;
+			SplashLongitude = RZRFDP.data[2].lng_T * RAD;
+			DeltaV_LVLH = RZRFTT.Manual.DeltaV;
+
+			//Calculate Orbital REFSMMAT
+			REFSMMATOpt refs;
+			MATRIX3 REFSMMAT, A;
+			char buffer1[1000];
+
+			refs.REFSMMATopt = 2;
+			refs.REFSMMATTime = 179*3600 + 20*60 + 30;
+			refs.vessel = calcParams.src;
+			refs.vesseltype = 1;
+			refs.useSV = true;
+			mcc->mcc_calcs.RestoreStateVector(refs.RV_MCC);
+
+			REFSMMAT = REFSMMATCalc(&refs);
+			EMGSTSTM(RTCC_MPT_CSM, REFSMMAT, RTCC_REFSMMAT_TYPE_CUR, refs.REFSMMATTime);
+
+			opt.dV_LVLH = DeltaV_LVLH;
+			opt.enginetype = RTCC_ENGINETYPE_CSMSPS;
+			opt.HeadsUp = false;
+			opt.navcheckGET = 0.0;
+			opt.REFSMMAT = EZJGMTX1.data[0].REFSMMAT;
+			opt.sxtstardtime = 0.0;
+			opt.TIG = TimeofIgnition;
+			opt.UllageDT = 14.0;
+			opt.UllageThrusterOpt = false;
+			opt.sv0 = svTPI.sv;
+			mcc->mcc_calcs.RestoreStateVector(opt.sv_deo);
+			opt.WeightsTable = WeightsTable;
+			opt.preburn = true;
+			opt.lat = SplashLatitude;
+			opt.lng = SplashLongitude;
+
+			ASTPBlockPAD(opt, *form);
+
+			sprintf(form->purpose, "REV 48");
+			sprintf(form->remarks, "1-Assumes Rendezvous, 2-Assumes orbital REFSMMAT, 3-CM-SM Sep yaw Left to 300, NOUN 48 PTRM = %.2f, YTRM = %.2f, CSM WGT = %.0f, DM WGT = 3838", form->pTrim, form->yTrim, form->Weight);
 	}
 	break;
 	}
